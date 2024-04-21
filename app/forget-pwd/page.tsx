@@ -2,8 +2,11 @@
 import React, { useState } from 'react';
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from '../services/firebase';
+import {HiCheckCircle, HiXCircle} from "react-icons/hi";
+import {useRouter} from "next/navigation";
 
 export default function ForgotPassword() {
+    const router = useRouter();
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState<string>('');
     const [error, setError] = useState<string>('');
@@ -12,12 +15,16 @@ export default function ForgotPassword() {
         try {
             await sendPasswordResetEmail(auth, email);
             setMessage('Password reset email sent. Check your inbox.');
+            setTimeout(() => {
+                setMessage('');
+                router.push('/sign-in');}, 5000);// Redirect to login page after timeout
             setError('');
         } catch (error) {
             const err = error as Error;
             console.error('Password reset error:', err.message);
             setMessage('');
             setError('Failed to send password reset email. Please try again.');
+            setTimeout(() => setError(''), 5000);
         }
     }
 
@@ -52,8 +59,21 @@ export default function ForgotPassword() {
                             Reset Password
                         </button>
                     </div>
-                    {message && <p className="mt-2 text-sm text-green-600">{message}</p>}
-                    {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+                    {message && (
+                        <div
+                            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4">
+                            <HiCheckCircle className="h-6 w-6 mr-2 text-green-500"/>
+                            <span>{message}</span>
+                        </div>
+                    )}
+                    )
+                    {error && (
+                        <div
+                            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4">
+                            <HiXCircle className="h-6 w-6 mr-2 text-red-500"/>
+                            <span>{error}</span>
+                        </div>
+                    )}
 
                     <p className="mt-2 text-center text-sm text-gray-600">
                         <a href="/sign-in" className="font-medium text-indigo-600 hover:text-indigo-500">Got an account?</a>

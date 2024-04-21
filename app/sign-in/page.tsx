@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from 'next/navigation';
 import { auth } from '../services/firebase';
-import {HiEye, HiEyeOff} from "react-icons/hi";
+import {HiEye, HiEyeOff, HiXCircle} from "react-icons/hi";
 
 export default function SignIn() {
     const router = useRouter();
@@ -86,7 +86,13 @@ export default function SignIn() {
                             Login
                         </button>
                     </div>
-                    {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+                    {error && (
+                        <div
+                            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4">
+                            <HiXCircle className="h-6 w-6 mr-2 text-red-500"/>
+                            <span>{error}</span>
+                        </div>
+                    )}
 
                     <p className="mt-4 text-center text-sm text-gray-600">
                         <a href="/sign-up" className="font-medium text-indigo-600 hover:text-indigo-500">Create
