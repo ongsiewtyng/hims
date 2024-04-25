@@ -9,7 +9,7 @@ export default function SignIn() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
 
     const handleSignIn = async (e : React.SyntheticEvent) => {
@@ -23,7 +23,8 @@ export default function SignIn() {
         })
             .catch((error) => {
                 console.error('Signed up error:', error);
-                setError(error.message);
+                setError("Email or password is incorrect. Please try again.");
+                setTimeout(() => setError(null), 5000);
             }
         );
     }
