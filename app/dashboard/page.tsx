@@ -1,8 +1,9 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import Header from "../components/Header";
+import Table from "../components/Table";
 import { database } from "../services/firebase";
-import {get, onValue, push, ref, set} from "firebase/database";
+import {get, onValue, push, ref, set, update} from "firebase/database";
 import {HiCheckCircle, HiXCircle} from "react-icons/hi";
 
 
@@ -16,10 +17,15 @@ export default function Dashboard() {
         id: string;
         categoryId: string;
     }
-    const [addItem, setAddItem] = useState(false);
+    type FoodItems = {
+        id: string;
+        vendor: string;
+        category: string;
+        foodName: string;
+        unit: string;
+        archive: boolean;
+    }
     const [addItemModal, setAddItemModal] = useState(false);
-    const [editItem, setEditItem] = useState(false);
-    const [archiveItem, setArchiveItem] = useState(false);
     const [addVendorModal, setAddVendorModal] = useState(false);
     const [vendor, setVendor] = useState<string>('');
     const [newVendor, setNewVendor] = useState('');
@@ -29,26 +35,29 @@ export default function Dashboard() {
     const [foodName, setFoodName] = useState('');
     const [unit, setUnit] = useState('');
     const [vendors, setVendors] = useState<Vendor[]>([]);
+    const [vendorId, setVendorId] = useState<string | null>(null);
+    const [archiveDataModal, setArchiveDataModal] = useState(false);
+    const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const [foodItems, setFoodItems] = useState<FoodItems[]>([]);
 
     const [error, setError] = useState<string | null>(null);
 
 
-    async function addFoodItem(vendor: string, category: string, foodName: string, unit: string){
-        const titleFoodName = foodName.toLowerCase().replace(/\b(\w)/g, c => c.toUpperCase());
-
+    async function addFoodItem(vendor: string, category: string, foodName: string, unit: string, archive: boolean = false){
         // Add food item to database
         try {
-            await set(ref(database, `foodItems/${titleFoodName}`), {
+            await push(ref(database, `foodItems/`), {
                 vendor: vendor,
                 category: category,
-                foodName: titleFoodName,
-                unit: unit
+                foodName: foodName,
+                unit: unit,
+                archive: archive
             });
             console.log('Food item added successfully!');
             setError("Food item added successfully!");
             setTimeout(() => {setError(null);
             setAddItemModal(false);
-        }, 5000);
+        }, 3000);
 
             // Reset the food item state
             setVendor('');
@@ -59,7 +68,7 @@ export default function Dashboard() {
         } catch (error) {
             console.error('Error adding food item:', error);
             setError("Failed to add food item. Please try again.");
-            setTimeout(() => setError(null), 5000);
+            setTimeout(() => setError(null), 3000);
             // Handle error
         }
     }
@@ -75,10 +84,12 @@ export default function Dashboard() {
 
             console.log('Vendor added successfully!');
             setError("Vendor added successfully!");
+
+            //Hide the modal after 5 seconds and clear the error message
             setTimeout(() => {
                 setError(null);
                 setAddVendorModal(false);
-            }, 5000);
+            },3000);
 
             //Reset the vendor state
             setNewVendor('');
@@ -129,12 +140,40 @@ export default function Dashboard() {
 
             //Reset the category state
             setCategory('');
-        }, 5000);
+        }, 3000);
         } catch (error) {
             console.error('Error adding category:', error);
             setError('Failed to add category. Please try again.');
         }
 
+    }
+
+    async function archiveItems(selectedItems: string[]) {
+        try {
+            //Retrieve the archive status of the selected items
+            const foodItemsRef = selectedItems.map(itemId => get(ref(database, `foodItems/${itemId}/archive`)));
+            const foodItemsData = await Promise.all(foodItemsRef);
+
+            //Update the archive status of the selected items
+            const updates: { [key: string]: any } = {};
+            foodItemsData.forEach((snapshot,index) => {
+                const itemId = selectedItems[index];
+                updates[`/foodItems/${itemId}/archive`] = !snapshot.val();
+            });
+
+            console.log('Updates:', updates);
+            await update(ref(database), updates);
+
+            console.log('Items archived successfully!');
+            setError('Items archived successfully!');
+            setTimeout(() => setError(null), 3000);
+            setArchiveDataModal(false);
+            setSelectedItems([]);
+        } catch (error) {
+            console.error('Error archiving items:', error);
+            setError('Failed to archive items. Please try again.');
+            setTimeout(() => setError(null), 3000);
+        }
     }
 
 
@@ -158,13 +197,17 @@ export default function Dashboard() {
 
 
     useEffect(() => {
-        if (addItemModal && vendor) { // Check if the modal is open and vendor is selected
-            const categoriesRef = ref(database, `categories/${vendor}`);
+        if (addItemModal && vendorId) { // Check if the modal is open and vendor is selected
+            const categoriesRef = ref(database, `categories/${vendorId}`);
             onValue(categoriesRef, (snapshot) => {
                 const categoriesData = snapshot.val();
                 if (categoriesData) {
                     const categoriesList: Category[] = Object.values(categoriesData);
                     setCategories(categoriesList);
+                    // If there's only one category, set it as the selected category
+                    if (categoriesList.length === 1) {
+                        setCategory(categoriesList[0].category);
+                    }
                 } else {
                     setCategories([]);
                 }
@@ -172,28 +215,52 @@ export default function Dashboard() {
         } else {
             setCategories([]);
         }
-    }, [addItemModal, vendor]);
+    }, [addItemModal, vendorId]);
 
+    useEffect(() => {
+        let isMounted = true;
+        if (archiveDataModal && isMounted) {
+            const foodItemsRef = ref(database, 'foodItems');
+            onValue(foodItemsRef, (snapshot) => {
+                const foodItemsData = snapshot.val();
+                if (foodItemsData) {
+                    const foodItemsList: FoodItems[] = Object.keys(foodItemsData).map(key => ({ id: key, ...foodItemsData[key] }));
+                    setFoodItems(foodItemsList);
+                }
+            });
+        } else {
+            setFoodItems([]);
+        }
 
+        return () => {
+            isMounted = false;
+        };
+    }, [archiveDataModal]);
+
+    const handleToggleArchive = (itemId: string) => {
+        // setFoodItems(prevFoodItems => {
+        //     const updatedItems = prevFoodItems.map(foodItem => {
+        //         if (foodItem.id === itemId) {
+        //             return {...foodItem, archive: !foodItem.archive};
+        //         }
+        //         return foodItem;
+        //     });
+        //     return updatedItems;
+        // });
+
+        // Call archiveItems function with selectedItems containing only the toggled item's ID
+        archiveItems([itemId]);
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
             <Header/>
             <div className="container mx-auto px-4 py-8">
                 <h1 className="text-black text-3xl font-bold mb-4">Inventory Dashboard</h1>
-                <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                    {/* Your table to display food items */}
+                <div className="rounded-lg overflow-hidden">
                     <div className="flex justify-center space-x-4 py-4">
                         <button onClick={() => setAddItemModal(true)}
                                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                            Item
-                        </button>
-                        <button onClick={() => setEditItem(true)}
-                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Edit
-                            Item
-                        </button>
-                        <button onClick={() => setArchiveItem(true)}
-                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Archive
                             Item
                         </button>
                         <button onClick={() => setAddVendorModal(true)}
@@ -204,14 +271,20 @@ export default function Dashboard() {
                                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
                             Category
                         </button>
+                        <button onClick={() => setArchiveDataModal(true)}
+                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Archive
+                            Items
+                        </button>
                     </div>
+                    {/* Your table to display food items */}
+                    <Table vendors={vendors} />
                 </div>
             </div>
 
             {addItemModal && (
                 <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
                     <div className="bg-white rounded-lg p-8 w-1/2">
-                        <h2 className="text-black text-2xl font-bold mb-4">Add Food Item</h2>
+                        <h2 className="text-black text-2xl font-bold mb-4">Add Item</h2>
                         <div className="mb-4">
                             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="vendor">
                                 Vendor
@@ -219,12 +292,16 @@ export default function Dashboard() {
                             {/* Render vendor options */}
                             <select
                                 value={vendor}
-                                onChange={e => setVendor(e.target.value)}
+                                onChange={e => {
+                                    setVendor(e.target.value);
+                                    const selectedVendor = vendors.find(v => v.name === e.target.value);
+                                    setVendorId(selectedVendor ? selectedVendor.id : null);
+                                }}
                                 className="text-gray-600 border border-gray-300 rounded-md px-4 py-2 w-full"
                             >
                                 <option value="">Select Vendor</option>
                                 {vendors.map((vendor: Vendor) => (
-                                    <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
+                                    <option key={vendor.id} value={vendor.name}>{vendor.name}</option>
                                 ))}
                             </select>
                         </div>
@@ -249,14 +326,14 @@ export default function Dashboard() {
                                 >
                                     <option value="">Select Category</option>
                                     {categories.map((category) => (
-                                        <option key={category.id} value={category.id}>{category.category}</option>
+                                        <option key={category.id} value={category.category}>{category.category}</option>
                                     ))}
                                 </select>
                             )}
                         </div>
                         <div className="mb-4">
                             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="foodName">
-                                Food Name
+                                Item Name
                             </label>
                             <input
                                 id="foodName"
@@ -294,7 +371,7 @@ export default function Dashboard() {
                         </div>
                         <div className="flex justify-between">
                             <button
-                                onClick={() => addFoodItem(vendor, category, foodName, unit)}
+                                onClick={() => addFoodItem(vendor, category, foodName, unit, false)}
                                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                             >
                                 Add Item
@@ -412,6 +489,56 @@ export default function Dashboard() {
                                     <HiCheckCircle className="h-6 w-6 mr-2 text-green-500" />
                                 ) : (
                                     <HiXCircle className="h-6 w-6 mr-2 text-red-500" />
+                                )}
+                                <span>{error}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/*{Archive Data Modal}*/}
+            {archiveDataModal && (
+                <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
+                    <div className="bg-white rounded-lg p-8 w-1/2">
+                        <h2 className="text-black text-2xl font-bold mb-4">Archive Items</h2>
+                        <div className="mb-4">
+                            {foodItems.map((item) => (
+                                <div key={item.id} className="flex items-center justify-between">
+                                    <span className="ml-3 text-black text-lg">{item.foodName}</span>
+                                    <label className="flex items-center cursor-pointer">
+                                        <div className="relative">
+                                            <input
+                                                type="checkbox"
+                                                className="sr-only"
+                                                checked={selectedItems.includes(item.id)}
+                                                onChange={() => handleToggleArchive(item.id)}
+                                            />
+                                            <div className="block rounded-full w-7 h-4"
+                                                 style={{backgroundColor: item.archive ? 'red' : 'green'}}></div>
+                                            <div
+                                                className={`dot absolute left-0.5 top-0.5 bg-white w-3 h-3 rounded-full transition ${item.archive ? 'transform translate-x-full' : ''}`}></div>
+
+                                        </div>
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex justify-between">
+                            <button
+                                onClick={() => setArchiveDataModal(false)}
+                                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                        {error && (
+                            <div
+                                className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4">
+                                {error.includes('successfully') ? (
+                                    <HiCheckCircle className="h-6 w-6 mr-2 text-green-500"/>
+                                ) : (
+                                    <HiXCircle className="h-6 w-6 mr-2 text-red-500"/>
                                 )}
                                 <span>{error}</span>
                             </div>
