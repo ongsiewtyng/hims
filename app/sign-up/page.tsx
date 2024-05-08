@@ -11,6 +11,7 @@ export default function SignUp() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [roles, setRoles] = useState('Admin');
     const [error, setError] = useState<string | null>(null);
     const [requirements, setRequirements] = useState([
         { text: 'At least 8 characters', valid: false },
@@ -32,6 +33,10 @@ export default function SignUp() {
         setRequirements(updatedRequirements);
     };
 
+    const handleRolesChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setRoles(e.target.value);
+    };
+
     const checkRequirement = (requirement: { text: string, valid: boolean }, password: string) => {
         switch (requirement.text) {
             case 'At least 8 characters':
@@ -51,13 +56,14 @@ export default function SignUp() {
         setShowPassword(prevShowPassword => !prevShowPassword);
     };
 
-    async function saveUserData(userId: string, email: string, password: string){
+    async function saveUserData(userId: string, email: string, password: string, roles: string){
         //Hash the password
         const hashPwd = await bcrypt.hash(password,5);
         await set(ref(database, 'users/' + userId), {
             uid: userId,
             email:email,
-            password: hashPwd
+            password: hashPwd,
+            roles: roles
         });
     }
 
@@ -91,7 +97,7 @@ export default function SignUp() {
             router.push('dashboard')
 
             //Save data
-            return await saveUserData(user.uid, email, password);
+            return await saveUserData(user.uid, email, password, roles);
 
 
         })
@@ -111,7 +117,23 @@ export default function SignUp() {
                     <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">HIMS Sign Up</h2>
                 </div>
                 <form className="mt-8 space-y-7" onSubmit={handleSignUp}>
-                    <div className="rounded-md shadow-sm -space-y-px">
+                    <div className="rounded-md -space-y-px">
+                        <div>
+                            <label htmlFor="roles" className="text-sm font-medium text-gray-700">Roles</label>
+                            <select
+                                id="roles"
+                                name="roles"
+                                value={roles}
+                                required
+                                onChange={handleRolesChange}
+                                className="appearance-none rounded-t-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm mb-4"
+                            >
+                                <option value="Admin">Admin</option>
+                                <option value="Lecturer">Lecturer</option>
+                                <option value="Vendor">Vendor</option>
+                            </select>
+
+                        </div>
                         <div>
                             <label htmlFor="email-address" className="text-sm font-medium text-gray-700">Email
                                 address</label>
@@ -155,7 +177,8 @@ export default function SignUp() {
                                     {requirements.map((req, index) => (
                                         <li key={index}
                                             className={`flex items-center ${req.valid ? 'valid' : 'invalid'}`}>
-                                            {req.valid ? <HiCheckCircle className="text-green-500 mr-1"/> : <HiOutlineCheckCircle className="text-black-300 mr-1"/>}
+                                            {req.valid ? <HiCheckCircle className="text-green-500 mr-1"/> :
+                                                <HiOutlineCheckCircle className="text-black-300 mr-1"/>}
                                             <span>{req.text}</span>
                                         </li>
                                     ))}
