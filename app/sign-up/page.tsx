@@ -130,7 +130,6 @@ export default function SignUp() {
                             >
                                 <option value="Admin">Admin</option>
                                 <option value="Lecturer">Lecturer</option>
-                                <option value="Vendor">Vendor</option>
                             </select>
 
                         </div>
