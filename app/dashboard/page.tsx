@@ -1,10 +1,10 @@
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, {useEffect, useState} from 'react';
 import Header from "../components/Header";
 import Table from "../components/Table";
-import { database } from "../services/firebase";
+import {database} from "../services/firebase";
 import {get, onValue, push, ref, set, update} from "firebase/database";
-import {HiCheckCircle, HiXCircle} from "react-icons/hi";
+import {HiCheckCircle, HiXCircle, HiOutlineSearch} from "react-icons/hi";
 
 
 export default function Dashboard() {
@@ -56,8 +56,8 @@ export default function Dashboard() {
             console.log('Food item added successfully!');
             setError("Food item added successfully!");
             setTimeout(() => {setError(null);
-            setAddItemModal(false);
-        }, 3000);
+                setAddItemModal(false);
+            }, 3000);
 
             // Reset the food item state
             setVendor('');
@@ -136,46 +136,17 @@ export default function Dashboard() {
             console.log('Category added successfully!');
             setError("Category added successfully!");
             setTimeout(() => {setError(null);
-            setAddCategoryModal(false);
+                setAddCategoryModal(false);
 
-            //Reset the category state
-            setCategory('');
-        }, 3000);
+                //Reset the category state
+                setCategory('');
+            }, 3000);
         } catch (error) {
             console.error('Error adding category:', error);
             setError('Failed to add category. Please try again.');
         }
 
     }
-
-    async function archiveItems(selectedItems: string[]) {
-        try {
-            //Retrieve the archive status of the selected items
-            const foodItemsRef = selectedItems.map(itemId => get(ref(database, `foodItems/${itemId}/archive`)));
-            const foodItemsData = await Promise.all(foodItemsRef);
-
-            //Update the archive status of the selected items
-            const updates: { [key: string]: any } = {};
-            foodItemsData.forEach((snapshot,index) => {
-                const itemId = selectedItems[index];
-                updates[`/foodItems/${itemId}/archive`] = !snapshot.val();
-            });
-
-            console.log('Updates:', updates);
-            await update(ref(database), updates);
-
-            console.log('Items archived successfully!');
-            setError('Items archived successfully!');
-            setTimeout(() => setError(null), 3000);
-            setArchiveDataModal(false);
-            setSelectedItems([]);
-        } catch (error) {
-            console.error('Error archiving items:', error);
-            setError('Failed to archive items. Please try again.');
-            setTimeout(() => setError(null), 3000);
-        }
-    }
-
 
     useEffect(() => {
         let isMounted = true;
@@ -218,39 +189,43 @@ export default function Dashboard() {
     }, [addItemModal, vendorId]);
 
     useEffect(() => {
-        let isMounted = true;
-        if (archiveDataModal && isMounted) {
+        if (archiveDataModal) {
             const foodItemsRef = ref(database, 'foodItems');
-            onValue(foodItemsRef, (snapshot) => {
+            const unsubscribe = onValue(foodItemsRef, (snapshot) => {
                 const foodItemsData = snapshot.val();
                 if (foodItemsData) {
                     const foodItemsList: FoodItems[] = Object.keys(foodItemsData).map(key => ({ id: key, ...foodItemsData[key] }));
                     setFoodItems(foodItemsList);
                 }
             });
-        } else {
-            setFoodItems([]);
-        }
 
-        return () => {
-            isMounted = false;
-        };
+            // Clean up the listener when the component unmounts or archiveDataModal changes
+            return () => {
+                unsubscribe();
+                setFoodItems([]);
+            };
+        }
     }, [archiveDataModal]);
 
-    const handleToggleArchive = (itemId: string) => {
-        // setFoodItems(prevFoodItems => {
-        //     const updatedItems = prevFoodItems.map(foodItem => {
-        //         if (foodItem.id === itemId) {
-        //             return {...foodItem, archive: !foodItem.archive};
-        //         }
-        //         return foodItem;
-        //     });
-        //     return updatedItems;
-        // });
+    const handleToggleArchive = async (itemId: string) => {
+        setFoodItems(prevFoodItems => {
+            return prevFoodItems.map(foodItem => {
+                if (foodItem.id === itemId) {
+                    return {...foodItem, archive: !foodItem.archive};
+                }
+                return foodItem;
+            });
+        });
 
-        // Call archiveItems function with selectedItems containing only the toggled item's ID
-        archiveItems([itemId]);
+        // Update the archive status in the database
+        const itemRef = ref(database, `foodItems/${itemId}`);
+        const snapshot = await get(itemRef);
+        if (snapshot.exists()) {
+            const itemData = snapshot.val();
+            await update(itemRef, { archive: !itemData.archive });
+        }
     };
+
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -258,26 +233,28 @@ export default function Dashboard() {
             <div className="container mx-auto px-4 py-8">
                 <h1 className="text-black text-3xl font-bold mb-4">Inventory Dashboard</h1>
                 <div className="rounded-lg overflow-hidden">
-                    <div className="flex justify-center space-x-4 py-4">
-                        <button onClick={() => setAddItemModal(true)}
-                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                            Item
-                        </button>
-                        <button onClick={() => setAddVendorModal(true)}
-                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                            Vendor
-                        </button>
-                        <button onClick={() => setAddCategoryModal(true)}
-                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                            Category
-                        </button>
-                        <button onClick={() => setArchiveDataModal(true)}
-                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Archive
-                            Items
-                        </button>
+                    <div className="flex justify-between py-4"> {/* Changed justify-center to justify-between */}
+                        <div className="flex space-x-4"> {/* Moved the buttons to the left */}
+                            <button onClick={() => setAddItemModal(true)}
+                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
+                                Item
+                            </button>
+                            <button onClick={() => setAddVendorModal(true)}
+                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
+                                Vendor
+                            </button>
+                            <button onClick={() => setAddCategoryModal(true)}
+                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
+                                Category
+                            </button>
+                            <button onClick={() => setArchiveDataModal(true)}
+                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Inactive
+                                Item
+                            </button>
+                        </div>
                     </div>
                     {/* Your table to display food items */}
-                    <Table vendors={vendors} />
+                    <Table vendors={vendor}/>
                 </div>
             </div>
 
@@ -473,7 +450,7 @@ export default function Dashboard() {
                         </div>
                         <div className="flex justify-between">
                             <button onClick={() => addCategory(vendor, category)}
-                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                                 Add Category
                             </button>
                             <button
