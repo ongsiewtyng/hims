@@ -4,7 +4,7 @@ import Header from "../components/Header";
 import Table from "../components/Table";
 import {database} from "../services/firebase";
 import {get, onValue, push, ref, set, update} from "firebase/database";
-import {HiCheckCircle, HiXCircle, HiOutlineSearch} from "react-icons/hi";
+import {HiCheckCircle, HiXCircle} from "react-icons/hi";
 
 
 export default function Dashboard() {
