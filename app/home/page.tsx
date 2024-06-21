@@ -228,7 +228,7 @@ export default function Home() {
         maintainAspectRatio: false,
         plugins: {
             legend: {
-                display: false
+                display: true
             },
             tooltip: {
                 callbacks: {
