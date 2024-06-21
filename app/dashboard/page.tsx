@@ -5,6 +5,7 @@ import Table from "../components/Table";
 import {database} from "../services/firebase";
 import {get, onValue, push, ref, set, update} from "firebase/database";
 import {HiCheckCircle, HiXCircle, HiOutlineSearch} from "react-icons/hi";
+import {getDatabase} from "@firebase/database";
 
 
 export default function Dashboard() {
@@ -34,6 +35,7 @@ export default function Dashboard() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [foodName, setFoodName] = useState('');
     const [unit, setUnit] = useState('');
+    const [stocks, setStocks] = useState('');
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [vendorId, setVendorId] = useState<string | null>(null);
     const [archiveDataModal, setArchiveDataModal] = useState(false);
@@ -42,17 +44,36 @@ export default function Dashboard() {
 
     const [error, setError] = useState<string | null>(null);
 
+    const addActivity = async (action: string, item: any) => {
+        try {
+            const activitiesRef = ref(database, 'activities');
+            const newActivity = {
+                action,
+                item,
+                date: new Date().toISOString(),
+            };
+            await push(activitiesRef, newActivity);
+            console.log('Activity logged successfully!');
+        } catch (error) {
+            console.error('Error logging activity:', error);
+        }
+    }
 
-    async function addFoodItem(vendor: string, category: string, foodName: string, unit: string, archive: boolean = false){
+
+    async function addFoodItem(vendor: string, category: string, foodName: string, unit: string, archive: boolean = false, stocks: string){
         // Add food item to database
         try {
-            await push(ref(database, `foodItems/`), {
-                vendor: vendor,
-                category: category,
-                foodName: foodName,
-                unit: unit,
-                archive: archive
-            });
+            const newItemRef = push(ref(database, 'foodItems/'));
+            const newItem = {
+                vendor,
+                category,
+                foodName,
+                unit,
+                archive,
+                stocks,
+                dateCreated: new Date().toISOString()
+            };
+            await set(newItemRef, newItem);
             console.log('Food item added successfully!');
             setError("Food item added successfully!");
             setTimeout(() => {setError(null);
@@ -64,6 +85,10 @@ export default function Dashboard() {
             setCategory('');
             setFoodName('');
             setUnit('');
+            setStocks('');
+
+            // Log the activity
+            await addActivity('add', foodName);
 
         } catch (error) {
             console.error('Error adding food item:', error);
@@ -93,6 +118,7 @@ export default function Dashboard() {
 
             //Reset the vendor state
             setNewVendor('');
+            await addActivity('add', newVendor);
         } catch (error) {
             console.error('Error adding vendor:', error);
             setError('Failed to add vendor. Please try again.');
@@ -141,6 +167,7 @@ export default function Dashboard() {
                 //Reset the category state
                 setCategory('');
             }, 3000);
+            await addActivity('add', category);
         } catch (error) {
             console.error('Error adding category:', error);
             setError('Failed to add category. Please try again.');
@@ -223,6 +250,7 @@ export default function Dashboard() {
         if (snapshot.exists()) {
             const itemData = snapshot.val();
             await update(itemRef, { archive: !itemData.archive });
+            await addActivity('archive', itemData.foodName);
         }
     };
 
@@ -322,6 +350,19 @@ export default function Dashboard() {
                             />
                         </div>
                         <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="stocks">
+                                Stocks
+                            </label>
+                            <input
+                                id="stocks"
+                                type="text"
+                                value={stocks}
+                                onChange={e => setStocks(e.target.value)}
+                                className="text-gray-600 border border-gray-300 rounded-md px-4 py-2 w-full"
+                                placeholder="Stocks"
+                            />
+                        </div>
+                        <div className="mb-4">
                             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="unit">
                                 Unit
                             </label>
@@ -348,7 +389,7 @@ export default function Dashboard() {
                         </div>
                         <div className="flex justify-between">
                             <button
-                                onClick={() => addFoodItem(vendor, category, foodName, unit, false)}
+                                onClick={() => addFoodItem(vendor, category, foodName, unit, false, stocks)}
                                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                             >
                                 Add Item
