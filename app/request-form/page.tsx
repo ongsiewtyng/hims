@@ -1,6 +1,6 @@
 'use client'
 import RequestForm from '../components/RequestForm';
-import Header from "@/app/components/Header";
+import Sidenav from "@/app/components/Sidenav";
 import {useState} from "react";
 import {database} from "../services/firebase";
 import {get, ref} from "firebase/database";
@@ -28,6 +28,7 @@ export default function ItemRequest() {
     const [campus, setCampus] = useState('');
     const [description, setDescription] = useState('');
     const [parsedData, setParsedData] = useState<ParsedDataItem[]>([]);
+    const [isSidenavOpen, setIsSidenavOpen] = useState(false);
 
     async function getVendorName() {
         const vendorRef = ref(database, 'vendors/');
@@ -55,8 +56,11 @@ export default function ItemRequest() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header/>
+            <Sidenav setIsSidenavOpen={setIsSidenavOpen}/>
             <div className="bg-white min-h-screen flex flex-col items-center justify-center">
+                <div className="flex items-center justify-center h-16 text-black">
+                    <h1 className="text-2xl font-bold">Item Request</h1>
+                </div>
                 <RequestForm onExcelDataChange={async (data) => {
                     // Assuming each row of the sheet contains a different field
                     setDate(data[15]);
@@ -79,7 +83,7 @@ export default function ItemRequest() {
                     // const vendorId = data[65] || '';
                     const vendorName = await getVendorName();
                     const uom = uomMapping[data[59]] || 'nos';
-                    for (let i = 64 ; i < data.length; i+=7) {
+                    for (let i = 64; i < data.length; i += 7) {
                         parsedData.push({
                             id: parsedData.length + 1, // Assign a unique ID or use the index of the array
                             vendorName: data[i] || '', // Extract vendor name from data[65] or use default value ''
@@ -97,7 +101,7 @@ export default function ItemRequest() {
                     // Set the parsed data array to state or pass it to the table component
                     setParsedData(parsedData);
 
-                }} />
+                }}/>
                 <form className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col max-w-xl w-full mt-8">
                     <div className="rounded-lg bg-gray-100 p-4 mb-4">
                         <div className="mb-4">
@@ -173,14 +177,14 @@ export default function ItemRequest() {
                             />
                         </div>
                     </div>
-                        <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
-                                Description
-                            </label>
-                            <DescriptionTable parsedData={parsedData}/>
-                        </div>
+                    <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
+                            Description
+                        </label>
+                        <DescriptionTable parsedData={parsedData}/>
+                    </div>
                 </form>
             </div>
         </div>
-);
+    );
 }
