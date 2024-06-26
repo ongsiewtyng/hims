@@ -12,6 +12,7 @@ interface Vendors {
     name: string;
     category: string;
     foodName: string;
+    stocks: number;
     unit: string;
 }
 
@@ -161,6 +162,10 @@ const Table: React.FC= () => {
                                     </th>
                                     <th scope="col"
                                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Stocks
+                                    </th>
+                                    <th scope="col"
+                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Unit
                                     </th>
                                 </tr>
@@ -174,6 +179,9 @@ const Table: React.FC= () => {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="text-sm text-gray-900">{item.foodName}</div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="text-sm text-gray-900">{item.stocks}</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="text-sm text-gray-900">{item.unit}</div>

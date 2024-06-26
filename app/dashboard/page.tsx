@@ -4,7 +4,7 @@ import Header from "../components/Header";
 import Table from "../components/Table";
 import {database} from "../services/firebase";
 import {get, onValue, push, ref, set, update} from "firebase/database";
-import {HiCheckCircle, HiXCircle, HiOutlineSearch} from "react-icons/hi";
+import {HiCheckCircle, HiXCircle, HiOutlineShoppingBag, HiOutlineUserGroup, HiOutlineViewGridAdd, HiOutlineLockClosed} from "react-icons/hi";
 
 
 export default function Dashboard() {
@@ -226,6 +226,20 @@ export default function Dashboard() {
         }
     };
 
+    const CustomButton = ({ icon, label, onClick }) => {
+        return (
+            <button
+                onClick={onClick}
+                className="flex items-center bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition-all duration-300"
+            >
+                <div className="flex-shrink-0">
+                    {icon}
+                </div>
+                <span className="ml-2">{label}</span>
+            </button>
+        );
+    };
+
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -235,22 +249,26 @@ export default function Dashboard() {
                 <div className="rounded-lg overflow-hidden">
                     <div className="flex justify-between py-4"> {/* Changed justify-center to justify-between */}
                         <div className="flex space-x-4"> {/* Moved the buttons to the left */}
-                            <button onClick={() => setAddItemModal(true)}
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                                Item
-                            </button>
-                            <button onClick={() => setAddVendorModal(true)}
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                                Vendor
-                            </button>
-                            <button onClick={() => setAddCategoryModal(true)}
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                                Category
-                            </button>
-                            <button onClick={() => setArchiveDataModal(true)}
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Inactive
-                                Item
-                            </button>
+                            <CustomButton
+                                icon={<HiOutlineShoppingBag size={24} />}
+                                label="Add Item"
+                                onClick={() => setAddItemModal(true)}
+                            />
+                            <CustomButton
+                                icon={<HiOutlineUserGroup size={24} />}
+                                label="Add Vendor"
+                                onClick={() => setAddVendorModal(true)}
+                            />
+                            <CustomButton
+                                icon={<HiOutlineViewGridAdd size={24} />}
+                                label="Add Category"
+                                onClick={() => setAddCategoryModal(true)}
+                            />
+                            <CustomButton
+                                icon={<HiOutlineLockClosed size={24} />}
+                                label="Inactive Item"
+                                onClick={() => setArchiveDataModal(true)}
+                            />
                         </div>
                     </div>
                     {/* Your table to display food items */}
