@@ -3,8 +3,8 @@ import React, {useEffect, useState} from 'react';
 import Table from "../components/Table";
 import {database} from "../services/firebase";
 import {get, onValue, push, ref, set, update} from "firebase/database";
-import {HiCheckCircle, HiXCircle} from "react-icons/hi";
 import Sidenav from "../components/Sidenav";
+import {HiCheckCircle, HiXCircle, HiOutlineShoppingBag, HiOutlineUserGroup, HiOutlineViewGridAdd, HiOutlineLockClosed} from "react-icons/hi";
 
 
 export default function Dashboard() {
@@ -226,8 +226,7 @@ export default function Dashboard() {
             await update(itemRef, { archive: !itemData.archive });
         }
     };
-
-
+    
     return (
         <div className="min-h-screen flex bg-gray-50">
             <Sidenav setIsSidenavOpen={setIsSidenavOpen}/>
