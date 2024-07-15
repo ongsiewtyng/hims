@@ -1,11 +1,10 @@
 'use client'
 import React, {useEffect, useState} from 'react';
-import Header from "../components/Header";
 import Table from "../components/Table";
 import {database} from "../services/firebase";
 import {get, onValue, push, ref, set, update} from "firebase/database";
-import {HiCheckCircle, HiXCircle, HiOutlineSearch} from "react-icons/hi";
-import {getDatabase} from "@firebase/database";
+import Sidenav from "../components/Sidenav";
+import {HiCheckCircle, HiXCircle, HiOutlineShoppingBag, HiOutlineUserGroup, HiOutlineViewGridAdd, HiOutlineLockClosed} from "react-icons/hi";
 
 
 export default function Dashboard() {
@@ -43,6 +42,7 @@ export default function Dashboard() {
     const [foodItems, setFoodItems] = useState<FoodItems[]>([]);
 
     const [error, setError] = useState<string | null>(null);
+    const [isSidenavOpen, setIsSidenavOpen] = useState(false);
 
     const addActivity = async (action: string, item: any) => {
         try {
@@ -253,36 +253,37 @@ export default function Dashboard() {
             await addActivity('archive', itemData.foodName);
         }
     };
-
-
+    
     return (
-        <div className="min-h-screen bg-gray-50">
-            <Header/>
-            <div className="container mx-auto px-4 py-8">
-                <h1 className="text-black text-3xl font-bold mb-4">Inventory Dashboard</h1>
-                <div className="rounded-lg overflow-hidden">
-                    <div className="flex justify-between py-4"> {/* Changed justify-center to justify-between */}
-                        <div className="flex space-x-4"> {/* Moved the buttons to the left */}
-                            <button onClick={() => setAddItemModal(true)}
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                                Item
-                            </button>
-                            <button onClick={() => setAddVendorModal(true)}
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                                Vendor
-                            </button>
-                            <button onClick={() => setAddCategoryModal(true)}
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                                Category
-                            </button>
-                            <button onClick={() => setArchiveDataModal(true)}
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Inactive
-                                Item
-                            </button>
+        <div className="min-h-screen flex bg-gray-50">
+            <Sidenav setIsSidenavOpen={setIsSidenavOpen}/>
+            <div className= {`flex-1 bg-gray-50 transition-all duration-300 ${isSidenavOpen ? 'ml-64' : 'ml-20'} p-8`}>
+                <div className="container mx-auto px-4 py-8">
+                    <h1 className="text-black text-3xl font-bold mb-4">Inventory Dashboard</h1>
+                    <div className="rounded-lg overflow-hidden">
+                        <div className="flex justify-between py-4"> {/* Changed justify-center to justify-between */}
+                            <div className="flex space-x-4"> {/* Moved the buttons to the left */}
+                                <button onClick={() => setAddItemModal(true)}
+                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
+                                    Item
+                                </button>
+                                <button onClick={() => setAddVendorModal(true)}
+                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
+                                    Vendor
+                                </button>
+                                <button onClick={() => setAddCategoryModal(true)}
+                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
+                                    Category
+                                </button>
+                                <button onClick={() => setArchiveDataModal(true)}
+                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Inactive
+                                    Item
+                                </button>
+                            </div>
                         </div>
+                        {/* Your table to display food items */}
+                        <Table vendors={vendor}/>
                     </div>
-                    {/* Your table to display food items */}
-                    <Table vendors={vendor}/>
                 </div>
             </div>
 
