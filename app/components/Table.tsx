@@ -1,10 +1,11 @@
 'use client'
 import React, {useEffect} from 'react';
-import {get, ref, update, onValue} from 'firebase/database';
+import {get, ref, update, onValue, push} from 'firebase/database';
 import { database } from '../services/firebase';
 import { FiEdit3} from "react-icons/fi";
 import { IoStorefrontOutline } from "react-icons/io5";
 import {HiCheckCircle, HiOutlineSearch, HiXCircle} from "react-icons/hi";
+import {getDatabase} from "@firebase/database";
 
 interface Vendors {
     id: string;
@@ -12,8 +13,6 @@ interface Vendors {
     name: string;
     category: string;
     foodName: string;
-    stocks: number;
-    unit: string;
 }
 
 const Table: React.FC= () => {
@@ -67,22 +66,29 @@ const Table: React.FC= () => {
     }
     , []);
 
-    async function editData(id:string, category: string, foodName: string, unit: string) {
+    async function editData(id: string, category: string, foodName: string,stocks:string, unit: string) {
         try {
             const dataRef = ref(database, `foodItems/${id}`);
             const snapshot = await get(dataRef);
             if (snapshot.exists()) {
                 const foodItem = snapshot.val() as Vendors;
                 // Check if the new values are different from the existing ones
-                if (foodItem.category !== category || foodItem.foodName !== foodName || foodItem.unit !== unit) {
+                if (foodItem.category !== category || foodItem.foodName !== foodName || foodItem.stocks !== stocks ||foodItem.unit !== unit) {
+                    const currentDate = new Date().toISOString(); // Get the current date and time
                     const updatedItem = {
                         ...foodItem,
                         category,
                         foodName,
-                        unit
+                        stocks,
+                        unit,
+                        dateUpdated: currentDate // Update the dateUpdated field
                     };
                     // Update the specific item under `foodItems/${keyName}/` path
                     await update(dataRef, updatedItem);
+
+                    // Log the activity
+                    await addActivity('edit', updatedItem);
+
                     // Update the local state
                     setData(prevData => prevData.map(item => item.id === editDataModal?.id ? updatedItem : item));
                     setMessage("Item updated successfully");
@@ -97,9 +103,21 @@ const Table: React.FC= () => {
         } catch (error) {
             console.error("Error fetching data:", error);
             setMessage("Error updating item");
-            setTimeout(() => setMessage(null),3000);
+            setTimeout(() => setMessage(null), 3000);
         }
     }
+
+    const addActivity = async (action: string, item: any) => {
+        const db = getDatabase();
+        const activitiesRef = ref(db, 'activities');
+        const currentDate = new Date().toISOString();
+        await push(activitiesRef, {
+            action,
+            item: item.foodName,
+            date: currentDate
+        });
+    };
+
 
     // Filter vendors and data based on the search query
     const filteredVendors = vendors.filter(vendor =>
@@ -272,6 +290,23 @@ const Table: React.FC= () => {
                                                 </div>
                                                 <div className="mb-4">
                                                     <label className="block text-gray-700 text-sm font-bold mb-2"
+                                                           htmlFor="stocks">
+                                                        Stocks
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        onChange={(e) => setEditDataModal({
+                                                            ...editDataModal,
+                                                            stocks: e.target.value
+                                                        })}
+                                                        value={editDataModal.stocks}
+                                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                        id="stocks"
+                                                        placeholder="Stocks"
+                                                    />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block text-gray-700 text-sm font-bold mb-2"
                                                            htmlFor="unit">
                                                         Unit
                                                     </label>
@@ -294,7 +329,7 @@ const Table: React.FC= () => {
                             </div>
                             <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                                 <button type="button"
-                                        onClick={() => editData(editDataModal.id, editDataModal.category, editDataModal.foodName, editDataModal.unit)}
+                                        onClick={() => editData(editDataModal.id, editDataModal.category, editDataModal.foodName,editDataModal.stocks, editDataModal.unit)}
                                         className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
                                     Save
                                 </button>
