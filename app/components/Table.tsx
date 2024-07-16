@@ -13,6 +13,8 @@ interface Vendors {
     name: string;
     category: string;
     foodName: string;
+    stocks: string;
+    unit: string;
 }
 
 const Table: React.FC= () => {
