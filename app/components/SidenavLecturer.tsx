@@ -9,19 +9,9 @@ type SidenavProps = {
 
 const menuItems = [
     {
-        name: "Home",
-        icon: <HiOutlineHome className="w-8 h-8" />,
-        path: '/admin/home',
-    },
-    {
-        name: "Dashboard",
-        icon: <HiOutlineChartBar className="w-8 h-8" />,
-        path: '/admin/dashboard',
-    },
-    {
         name: "Item Request",
         icon: <HiOutlineShoppingCart className="w-8 h-8" />,
-        path: '/admin/request-form',
+        path: '/lecturer/request-form',
     },
     {
         name: "Logout",

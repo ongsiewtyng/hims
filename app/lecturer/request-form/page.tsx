@@ -1,10 +1,11 @@
 'use client'
-import RequestForm from '../components/RequestForm';
-import Sidenav from "../components/Sidenav";
+import RequestForm from '../../components/RequestForm';
+import SidenavLecturer from "../../components/SidenavLecturer";
+import Sidenav from "../../components/Sidenav";
 import {useState} from "react";
-import {database} from "../services/firebase";
+import {database} from "../../services/firebase";
 import {get, ref} from "firebase/database";
-import DescriptionTable from "../components/DescriptionTable";
+import DescriptionTable from "../../components/DescriptionTable";
 
 type ParsedDataItem = {
     id: number;
@@ -56,7 +57,7 @@ export default function ItemRequest() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Sidenav setIsSidenavOpen={setIsSidenavOpen}/>
+            <SidenavLecturer setIsSidenavOpen={setIsSidenavOpen}/>
             <div className="bg-white min-h-screen flex flex-col items-center justify-center">
                 <div className="flex items-center justify-center h-16 text-black">
                     <h1 className="text-2xl font-bold">Item Request</h1>

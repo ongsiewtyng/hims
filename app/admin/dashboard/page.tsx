@@ -1,9 +1,9 @@
 'use client'
 import React, {useEffect, useState} from 'react';
-import Table from "../components/Table";
-import {database} from "../services/firebase";
+import Table from "../../components/Table";
+import {database} from "../../services/firebase";
 import {get, onValue, push, ref, set, update} from "firebase/database";
-import Sidenav from "../components/Sidenav";
+import Sidenav from "../../components/Sidenav";
 import {HiCheckCircle, HiXCircle, HiOutlineShoppingBag, HiOutlineUserGroup, HiOutlineViewGridAdd, HiOutlineLockClosed} from "react-icons/hi";
 
 
@@ -43,6 +43,11 @@ export default function Dashboard() {
 
     const [error, setError] = useState<string | null>(null);
     const [isSidenavOpen, setIsSidenavOpen] = useState(false);
+    const [role, setRole] = useState('');
+
+    useEffect(() => {
+
+    }, []);
 
     const addActivity = async (action: string, item: any) => {
         try {

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from 'next/navigation';
-import { auth } from '../services/firebase';
+import { auth,getUserRole } from '../services/firebase';
 import {HiEye, HiEyeOff, HiXCircle} from "react-icons/hi";
 
 export default function SignIn() {
@@ -14,19 +14,30 @@ export default function SignIn() {
 
     const handleSignIn = async (e : React.SyntheticEvent) => {
         e.preventDefault();
-        signInWithEmailAndPassword(auth,email, password)
-        .then((userCredential) => {
-            // Signed in
+
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
-            console.log("User:", user);
-            router.push('/dashboard');
-        })
-            .catch((error) => {
-                console.error('Signed up error:', error);
-                setError("Email or password is incorrect. Please try again.");
-                setTimeout(() => setError(null), 5000);
+
+            if (user) {
+                // Fetch the user's role from Firebase
+                const role = await getUserRole(user.uid);
+                console.log('Fetched Role:', role); // Log fetched role
+
+                // Redirect based on role
+                if (role === 'Admin') {
+                    router.push('/admin/home');
+                } else if (role === 'Lecturer') {
+                    router.push('/lecturer/request-form');
+                } else {
+                    router.push('/signin'); // Handle unknown roles
+                }
             }
-        );
+        } catch (error) {
+            console.error('Sign in error:', error);
+            setError('Email or password is incorrect. Please try again.');
+            setTimeout(() => setError(null), 5000);
+        }
     }
 
     const toggleShowPassword = () => {
@@ -96,12 +107,12 @@ export default function SignIn() {
                     )}
 
                     <p className="mt-4 text-center text-sm text-gray-600">
-                        <a href="/sign-up" className="font-medium text-indigo-600 hover:text-indigo-500">Create
+                        <a href="/app/sign-upn-up" className="font-medium text-indigo-600 hover:text-indigo-500">Create
                         an account?</a>
                     </p>
 
                     <p className="mt-2 text-center text-sm text-gray-600">
-                        <a href="/forget-pwd" className="font-medium text-indigo-600 hover:text-indigo-500">Forgot
+                        <a href="/app/forget-pwd-pwd" className="font-medium text-indigo-600 hover:text-indigo-500">Forgot
                         password?</a>
                     </p>
                 </form>

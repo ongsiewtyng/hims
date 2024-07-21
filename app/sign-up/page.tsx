@@ -204,7 +204,7 @@ export default function SignUp() {
 
 
                     <p className="mt-2 text-center text-sm text-gray-600">
-                        <a href="/sign-in" className="font-medium text-indigo-600 hover:text-indigo-500">
+                        <a href="/app/sign-in" className="font-medium text-indigo-600 hover:text-indigo-500">
                             Have an account?
                         </a>
                     </p>

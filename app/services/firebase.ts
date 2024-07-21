@@ -1,7 +1,9 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getDatabase } from "@firebase/database";
+import { getDatabase, ref, get } from "@firebase/database";
+import admin from "firebase-admin";
+
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -16,7 +18,22 @@ const firebaseConfig = {
     databaseURL: "https://hims-8187e-default-rtdb.firebaseio.com/"
 };
 
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const database = getDatabase(app);
+
+export const getUserRole = async (userId: string): Promise<string> => {
+    const userRef = ref(database, `users/${userId}`);
+    const snapshot = await get(userRef);
+
+    if (snapshot.exists()) {
+        console.log("Fetched role:", snapshot.val().roles);
+        return snapshot.val().roles;
+    } else {
+        throw new Error("User not found");
+    }
+}
+
+

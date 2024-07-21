@@ -1,8 +1,8 @@
 'use client';
 import { Chart } from 'primereact/chart';
 import React, {useEffect, useState} from 'react';
-import Header from "../components/Header";
-import Sidenav from "../components/Sidenav";
+import Header from "../../components/Header";
+import Sidenav from "../../components/Sidenav";
 import {
     HiOutlineArchive,
     HiOutlineDocumentDownload,
