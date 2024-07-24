@@ -6,15 +6,18 @@ import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/
 import '../components/loader.css';
 
 type RequestFormProps = {
-    onExcelDataChange: (data: any) => void;
+    onExcelDataChange: (sectionA: any[], header: string[], data: any[], extractedValues: any[]) => void;
 };
 
 const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
     const [message, setMessage] = useState('No Files Selected');
-    const [excelData, setExcelData] = useState<any[]>([]);
+    //const [excelData, setExcelData] = useState<any[]>([]);
     const [isFormVisible, setIsFormVisible] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
     const [previousExcelData, setPreviousExcelData] = useState<any[]>([]);
+    const [header, setHeader] = useState<string[]>([]);
+    const [data, setData] = useState<any[]>([]);
+    const [sectionA, setSectionA] = useState<any[]>([]);
 
 
 
@@ -118,12 +121,36 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
                             const ws = wb.Sheets[ws_name];
                             const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
                             console.log('JSON Data:', jsonData); // Log the JSON data
+                            const sectionA = jsonData.slice(5, 11);
+                            const result = {};  // Create an empty object to store the key-value pairs
+                            sectionA.forEach((row) => {
+                                const header = row[0].replace(':', '').trim();
+                                const value = row[row.length - 1];
+                                result[header] = value;
+                            });
+
+                            // Collect only the values into an array
+                            const extractedValues = Object.values(result).map(value => String(value));
+
                             const headerRow = jsonData[13];
-                            console.log(headerRow);
-                            // Flatten the array
-                            const flattenedData = jsonData.reduce((acc, val) => acc.concat(val), []);
-                            console.log('Extracted Data:', flattenedData); // Log the extracted data
-                            setExcelData(flattenedData);
+                            const dataRows = jsonData.slice(14).map(row => {
+                                let rowData = {};
+                                headerRow.forEach((header, index) => {
+                                    rowData[header] = row[index];
+                                });
+                                return rowData;
+                            });
+
+                            console.log('Section A:', sectionA);
+                            console.log('Original Result:', result);
+                            console.log('Extracted Values:', extractedValues);
+                            console.log('Header:', headerRow); // Log the header row
+                            console.log('Data Rows:', dataRows); // Log the data rows
+
+                            setSectionA(sectionA);
+                            setHeader(headerRow);
+                            setData(dataRows);
+                            onExcelDataChange(sectionA, headerRow, dataRows, extractedValues);
                         }
                     }
                 };
@@ -132,16 +159,11 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
             .catch(error => console.error('Fetch error:', error));
     };
 
-
     useEffect(() => {
-        if (JSON.stringify(excelData) !== JSON.stringify(previousExcelData)) {
-            onExcelDataChange(excelData);
+        if (JSON.stringify(data) !== JSON.stringify(previousExcelData)) {
+            setPreviousExcelData(data);
         }
-    }, [excelData, onExcelDataChange]);
-
-    useEffect(() => {
-        setPreviousExcelData(excelData);
-    }, [excelData]);
+    }, [data, previousExcelData]);
 
     return (
         <div className="relative flex flex-col max-w-xl w-full mt-4">
