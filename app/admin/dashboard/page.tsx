@@ -5,7 +5,7 @@ import {database} from "../../services/firebase";
 import {get, onValue, push, ref, set, update} from "firebase/database";
 import Sidenav from "../../components/Sidenav";
 import {HiCheckCircle, HiXCircle, HiOutlineShoppingBag, HiOutlineUserGroup, HiOutlineViewGridAdd, HiOutlineLockClosed} from "react-icons/hi";
-
+import "../styles/Homebuttons.css";
 
 export default function Dashboard() {
     type Vendor = {
@@ -266,29 +266,54 @@ export default function Dashboard() {
                 <div className="container mx-auto px-4 py-8">
                     <h1 className="text-black text-3xl font-bold mb-4">Inventory Dashboard</h1>
                     <div className="rounded-lg overflow-hidden">
-                        <div className="flex justify-between py-4"> {/* Changed justify-center to justify-between */}
-                            <div className="flex space-x-4"> {/* Moved the buttons to the left */}
-                                <button onClick={() => setAddItemModal(true)}
-                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                                    Item
+                        <div className="flex justify-between py-4">
+                            <div className="flex space-x-4">
+                                <button
+                                    onClick={() => setAddItemModal(true)}
+                                    className="custom-button"
+                                >
+                                    <svg width="24" height="24" viewBox="0 0 24 24">
+                                        {/* Your SVG icon here */}
+                                        <HiOutlineShoppingBag size={20}/>
+                                    </svg>
+                                    <span>Add Item</span>
                                 </button>
-                                <button onClick={() => setAddVendorModal(true)}
-                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                                    Vendor
+                                <button
+                                    onClick={() => setAddVendorModal(true)}
+                                    className="custom-button"
+                                >
+                                    <svg width="24" height="24" viewBox="0 0 24 24">
+                                        {/* Your SVG icon here */}
+                                        <HiOutlineUserGroup size={20}/>
+                                    </svg>
+                                    <span>Add Vendor</span>
                                 </button>
-                                <button onClick={() => setAddCategoryModal(true)}
-                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
-                                    Category
+                                <button
+                                    onClick={() => setAddCategoryModal(true)}
+                                    className="custom-button"
+                                >
+                                    <svg width="24" height="24" viewBox="0 0 24 24">
+                                        {/* Your SVG icon here */}
+                                        <HiOutlineViewGridAdd size={20}/>
+                                    </svg>
+                                    <span>Add Category</span>
                                 </button>
-                                <button onClick={() => setArchiveDataModal(true)}
-                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Inactive
-                                    Item
+                                <button
+                                    onClick={() => setArchiveDataModal(true)}
+                                    className="custom-button"
+                                >
+                                    <svg width="24" height="24" viewBox="0 0 24 24">
+                                        {/* Your SVG icon here */}
+                                        <HiOutlineLockClosed size={20}/>
+                                    </svg>
+                                    <span>Inactive Item</span>
                                 </button>
                             </div>
                         </div>
                         {/* Your table to display food items */}
                         <Table vendors={vendor}/>
                     </div>
+
                 </div>
             </div>
 

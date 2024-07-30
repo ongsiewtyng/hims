@@ -1,46 +1,32 @@
-// middleware.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuth } from 'firebase-admin/auth';
-import { getUserRole } from './services/firebase'; // Ensure this function uses admin SDK for server-side
+// middleware/roleBasedRedirect.js
+import { NextResponse } from "next/server";
+import { getAuth } from "firebase/auth";
+import { getUserRole, database} from "./services/firebase";
 
-const admin = getAuth();
+export async function middleware(req) {
+    const auth = getAuth();
+    const user = auth.currentUser;
 
-export async function middleware(request: NextRequest) {
-    const { pathname } = request.nextUrl;
-    const url = request.nextUrl.clone();
+    if (user) {
+        const role = await getUserRole(user.uid);
 
-    const tokenCookie = request.cookies.get('token');
-
-    if (!tokenCookie) {
-        // No token, redirect to login
-        url.pathname = '/signin';
+        const url = req.nextUrl.clone();
+        if (role === "admin" && !url.pathname.startsWith("/admin")) {
+            url.pathname = "/admin";
+            return NextResponse.redirect(url);
+        } else if (role === "lecturer" && !url.pathname.startsWith("/lecturer")) {
+            url.pathname = "/lecturer";
+            return NextResponse.redirect(url);
+        }
+    } else {
+        const url = req.nextUrl.clone();
+        url.pathname = "/login";
         return NextResponse.redirect(url);
     }
 
-    try {
-        const decodedToken = await admin.verifyIdToken(tokenCookie.value);
-        const role = await getUserRole(decodedToken.uid);
-
-        // Role-based redirection
-        if (role === 'Admin') {
-            // Admins can access everything
-            return NextResponse.next();
-        }
-
-        if (role === 'Lecturer') {
-            // Restrict access for lecturers
-            if (pathname.startsWith('/admin')) {
-                url.pathname = '/lecturer/request-form';
-                return NextResponse.redirect(url);
-            }
-        }
-
-        // Redirect unauthorized users
-        url.pathname = '/signin';
-        return NextResponse.redirect(url);
-    } catch (error) {
-        console.error('Error verifying token:', error);
-        url.pathname = '/signin';
-        return NextResponse.redirect(url);
-    }
+    return NextResponse.next();
 }
+
+export const config = {
+    matcher: ["/admin/:path*", "/lecturer/:path*", "/anotherRole/:path*"],
+};
