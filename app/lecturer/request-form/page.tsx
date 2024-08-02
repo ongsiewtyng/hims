@@ -2,6 +2,8 @@
 import RequestForm from '../../components/RequestForm';
 import SidenavLecturer from "../../components/SidenavLecturer";
 import {useState} from "react";
+import {database} from "../../services/firebase";
+import {push, ref, set} from "firebase/database";
 
 
 export default function ItemRequest() {
@@ -26,6 +28,29 @@ export default function ItemRequest() {
 
     };
 
+    const handleSubmit = async () => {
+        if (confirm('Do you want to submit the form?')) {
+            try {
+                const sanitizedExcelData = excelData.map(row =>
+                    Object.fromEntries(Object.entries(row).map(([key, value]) => [key, value ?? '']))
+                );
+
+                const newRequestRef = push(ref(database, 'requests'));
+                await set(newRequestRef, {
+                    sectionA,
+                    excelData: sanitizedExcelData,
+                    status: "Pending",
+                    dateCreated: new Date().toISOString()
+                });
+                alert('Data submitted successfully.');
+            } catch (e) {
+                console.error('Error adding document: ', e);
+                alert('Error adding document: ' + e.message);
+            }
+        }
+    };
+
+
     return (
         <div className="min-h-screen bg-gray-50">
             <SidenavLecturer setIsSidenavOpen={setIsSidenavOpen}/>
@@ -35,7 +60,7 @@ export default function ItemRequest() {
                 </div>
                 <RequestForm onExcelDataChange={handleExcelDataChange} />
                 {excelData.length > 0 && (
-                    <div className="bg-white p-8 rounded-2xl shadow-2xl w-full" style={{ width: '90rem' }}>
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl w-full" style={{width: '90rem'}}>
                         <div>
                             <h2 className="text-2xl font-bold mb-4 text-gray-700">Section A</h2>
                             <div className="overflow-x-auto">
@@ -99,6 +124,14 @@ export default function ItemRequest() {
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                        <div className="mt-8 flex justify-end">
+                            <button
+                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                                onClick={handleSubmit}
+                            >
+                                Submit
+                            </button>
                         </div>
                     </div>
                 )}

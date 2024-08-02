@@ -14,6 +14,8 @@ import {
     HiOutlineDocumentText, HiOutlineArrowRight, HiOutlineArrowLeft, HiChevronRight, HiChevronLeft
 } from "react-icons/hi";
 import { getDatabase, ref, get, set } from "@firebase/database";
+import {onValue} from "firebase/database";
+import {database} from "../../services/firebase";
 
 type Activity = {
     action: string;
@@ -21,10 +23,13 @@ type Activity = {
     date: string;
 };
 
-type stockData = {
-    label: string;
-    value: number;
-};
+// Define the Request interface
+interface Request {
+    requester: string;
+    dateCreated: string;
+    status: string;
+    // Add other properties if needed
+}
 
 interface StockItem {
     label: string;
@@ -41,7 +46,7 @@ export default function Home() {
     const [filteredStockData, setFilteredStockData] = React.useState<StockItem[]>([]);
     const [vendors, setVendors] = React.useState<string[]>([]);
     const [selectedVendor, setSelectedVendor] = useState('');
-    const [requests, setRequests] = React.useState([]);
+    const [requests, setRequests] = useState<Request[]>([]);
     const [activities, setActivities] = useState<Activity[]>([]);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [isSidenavOpen, setIsSidenavOpen] = useState(false);
@@ -166,9 +171,10 @@ export default function Home() {
 
     const formatDate = (date: string) => {
         const options: Intl.DateTimeFormatOptions = {
-            month: '2-digit',
+            month: 'short',
             day: '2-digit',
             hour: '2-digit',
+            year: 'numeric',
             minute: '2-digit',
             hour12: true
         };
@@ -252,19 +258,55 @@ export default function Home() {
         }
     };
 
+    const toTitleCase = (str: string): string => str
+        .toLowerCase()
+        .replace(/\b\w/g, char => char.toUpperCase());
+
+    const statusColors = {
+        Pending: '#f59e0b', // Yellow
+        'admin approved': '#10b981', // Green
+        'admin disapproved': '#ef4444', // Red
+        'editing process': '#f97316', // Orange
+        'send to vendor': '#3b82f6', // Blue
+        'quotation received': '#9333ea', // Purple
+        'request successfully': '#22c55e', // Light Green
+    };
+
+    // CSS for the blinking circle
+    const circleStyles = (color: string) => ({
+        width: '8px',
+        height: '8px',
+        borderRadius: '50%',
+        backgroundColor: color,
+        display: 'inline-block',
+        marginRight: '8px',
+        animation: 'blink 1.3s infinite',
+    });
+
+    // CSS keyframes for the blink animation
+    const blinkKeyframes = `
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+    }`;
+
     useEffect(() => {
-        async function fetchRequests() {
-            const db = getDatabase();
-            const requestsRef = ref(db, 'requests');
-            const snapshot = await get(requestsRef);
-            if (snapshot.exists()) {
-                const requests = snapshot.val();
-                setRequests(Object.keys(requests).map(key => requests[key]));
-            } else {
-                setRequests([]);
+        const requestsRef = ref(database, 'requests');
+        onValue(requestsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const requestsArray = Object.keys(data).map(key => {
+                    const requestData = data[key];
+                    const requesterName = requestData.sectionA?.[2]?.[5] || 'Unknown';
+                    return {
+                        id: key,
+                        ...requestData,
+                        requester: toTitleCase(requesterName)
+                    };
+                });
+                setRequests(requestsArray);
             }
-        }
-        fetchRequests();
+        });
     }, []);
 
 
@@ -333,7 +375,7 @@ export default function Home() {
                 <div className="container mx-auto p-4 flex flex-col space-y-4">
                     <div className="flex w-full space-x-4">
                         <div className="bg-white p-4 border border-gray-300 rounded-lg shadow-md w-full">
-                            <h2 className="text-xl font-bold mb-4" style={{ color: '#111827' }}>Recent Activity</h2>
+                            <h2 className="text-xl font-bold mb-4" style={{color: '#111827'}}>Recent Activity</h2>
                             {activities.length === 0 ? (
                                 <div className="text-gray-600">No recent activity available.</div>
                             ) : (
@@ -368,10 +410,11 @@ export default function Home() {
                                             disabled={currentPage === 1}
                                             className="focus:outline-none"
                                         >
-                                            <HiOutlineArrowLeft className="text-gray-500 text-xl hover:text-gray-700 transition-colors" />
+                                            <HiOutlineArrowLeft
+                                                className="text-gray-500 text-xl hover:text-gray-700 transition-colors"/>
                                         </button>
                                         <div className="flex space-x-2 mx-4">
-                                            {Array.from({ length: Math.ceil(activities.length / activitiesPerPage) }, (_, index) => (
+                                            {Array.from({length: Math.ceil(activities.length / activitiesPerPage)}, (_, index) => (
                                                 <div
                                                     key={index}
                                                     onClick={() => paginate(index + 1)}
@@ -388,7 +431,8 @@ export default function Home() {
                                             disabled={currentPage === Math.ceil(activities.length / activitiesPerPage)}
                                             className="focus:outline-none"
                                         >
-                                            <HiOutlineArrowRight className="text-gray-500 text-xl hover:text-gray-700 transition-colors" />
+                                            <HiOutlineArrowRight
+                                                className="text-gray-500 text-xl hover:text-gray-700 transition-colors"/>
                                         </button>
                                     </div>
                                 </>
@@ -409,6 +453,7 @@ export default function Home() {
                         </select>
                         <Chart type="bar" data={chartData} options={chartOptions}/>
                     </div>
+                    <style>{blinkKeyframes}</style>
                     <div className="bg-white p-4 border border-gray-300 rounded-lg shadow-md w-full mt-4">
                         <h2 className="text-xl font-bold mb-4" style={{color: '#111827'}}>Item Requests</h2>
                         <table className="min-w-full divide-y divide-gray-200">
@@ -430,11 +475,13 @@ export default function Home() {
                                         {request.requester}
                                     </td>
                                     <td className="text-gray-600 px-6 py-4 whitespace-nowrap">
-                                        {request.date}
+                                        {formatDate(request.dateCreated)}
                                     </td>
                                     <td
                                         className="text-gray-600 px-6 py-4 whitespace-nowrap"
-                                        style={{color: request.status === 'pending' ? '#f59e0b' : '#10b981'}}>
+                                        style={{color: statusColors[request.status] || '#6b7280'}} // Default color if status not found
+                                    >
+                                        <span style={circleStyles(statusColors[request.status])}></span>
                                         {request.status}
                                     </td>
                                 </tr>
