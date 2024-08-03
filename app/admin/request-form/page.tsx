@@ -1,8 +1,21 @@
 'use client'
 import RequestForm from '../../components/RequestForm';
 import Sidenav from "../../components/Sidenav";
-import {useState} from "react";
+import React, {useEffect, useState} from "react";
+import {HiOutlineDocumentText} from "react-icons/hi";
+import {ref} from "@firebase/database";
+import {database} from "../../services/firebase";
+import {onValue} from "firebase/database";
+import Header from "../../components/Header";
+import RequestTable from "../../components/RequestTable";
 
+// Define the Request interface
+interface Request {
+    requester: string;
+    dateCreated: string;
+    status: string;
+    // Add other properties if needed
+}
 
 export default function ItemRequest() {
     // fields for form
@@ -13,6 +26,7 @@ export default function ItemRequest() {
     const [headers, setHeaders] = useState<string[]>([]);
     const [extractedValues, setExtractedValues] = useState<string[]>([]);
     const [sectionAHeaders, setSectionAHeaders] = useState<string[]>([]);
+    const [requests, setRequests] = useState<Request[]>([]);
 
     const handleExcelDataChange = (sectionA: any[], header: string[], data: any[], extractedValues: any[]) => {
         setSectionA(sectionA);
@@ -26,82 +40,71 @@ export default function ItemRequest() {
 
     };
 
+
+
+    const toTitleCase = (str: string): string => str
+        .toLowerCase()
+        .replace(/\b\w/g, char => char.toUpperCase());
+
+    const statusColors = {
+        Pending: '#f59e0b', // Yellow
+        'admin approved': '#10b981', // Green
+        'admin disapproved': '#ef4444', // Red
+        'editing process': '#f97316', // Orange
+        'send to vendor': '#3b82f6', // Blue
+        'quotation received': '#9333ea', // Purple
+        'request successfully': '#22c55e', // Light Green
+    };
+
+    // CSS for the blinking circle
+    const circleStyles = (color: string) => ({
+        width: '8px',
+        height: '8px',
+        borderRadius: '50%',
+        backgroundColor: color,
+        display: 'inline-block',
+        marginRight: '8px',
+        animation: 'blink 1.3s infinite',
+    });
+
+    // CSS keyframes for the blink animation
+    const blinkKeyframes = `
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+    }`;
+
+    useEffect(() => {
+        const requestsRef = ref(database, 'requests');
+        onValue(requestsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const requestsArray = Object.keys(data).map(key => {
+                    const requestData = data[key];
+                    const requesterName = requestData.sectionA?.[2]?.[5] || 'Unknown';
+                    return {
+                        id: key,
+                        ...requestData,
+                        requester: toTitleCase(requesterName)
+                    };
+                });
+                setRequests(requestsArray);
+            }
+        });
+    }, []);
+
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen flex bg-gray-50">
             <Sidenav setIsSidenavOpen={setIsSidenavOpen}/>
-            <div className="bg-white min-h-screen flex flex-col items-center justify-center">
-                <div className="flex items-center justify-center h-16 text-black">
-                    <h1 className="text-2xl font-bold">Item Request</h1>
-                </div>
-                <RequestForm onExcelDataChange={handleExcelDataChange} />
-                {excelData.length > 0 && (
-                    <div className="bg-white p-8 rounded-2xl shadow-2xl w-full" style={{ width: '90rem' }}>
-                        <div>
-                            <h2 className="text-2xl font-bold mb-4 text-gray-700">Section A</h2>
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full bg-white shadow-md rounded-lg">
-                                    <thead className="bg-gray-100 border-b">
-                                    <tr>
-                                        {sectionAHeaders.length > 0 && sectionAHeaders.map((header, index) => (
-                                            <th
-                                                key={index}
-                                                className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-                                            >
-                                                {header}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr>
-                                        {extractedValues.length > 0 && extractedValues.map((value, index) => (
-                                            <td
-                                                key={index}
-                                                className="py-3 px-4 border-b text-sm text-gray-700"
-                                            >
-                                                {value}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div className="mt-8">
-                            <h2 className="text-2xl font-bold mb-4 text-gray-700">Section B</h2>
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full bg-white shadow-md rounded-lg">
-                                    <thead className="bg-gray-100 border-b">
-                                    <tr>
-                                        {headers.map((header, index) => (
-                                            <th
-                                                key={index}
-                                                className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-                                            >
-                                                {header}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {excelData.map((row, rowIndex) => (
-                                        <tr key={rowIndex} className="even:bg-gray-50">
-                                            {headers.map((header, colIndex) => (
-                                                <td
-                                                    key={colIndex}
-                                                    className="py-3 px-4 border-b text-sm text-gray-700"
-                                                >
-                                                    {row[header]}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+            <div className= {`flex-1 bg-white-50 transition-all duration-300 ${isSidenavOpen ? 'ml-64' : 'ml-20'} p-8`}>
+                <Header/>
+                <div className="min-h-screen flex-col items-center justify-center">
+                    <div className="flex items-center justify-center h-16 text-black">
+                        <h1 className="text-2xl font-bold">Item Request</h1>
                     </div>
-                )}
+                    <style>{blinkKeyframes}</style>
+                    <RequestTable/>
+                </div>
             </div>
         </div>
     );
