@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import "../admin/styles/blink.css";
 
 interface RequestModalProps {
     isOpen: boolean;
@@ -15,6 +16,33 @@ interface RequestModalProps {
     } | null;
 }
 
+const BlinkingStatusIndicator = ({ status }: { status: string }) => {
+    const statusColors = {
+        Pending: '#f59e0b', // Yellow
+        'admin approved': '#10b981', // Green
+        'admin disapproved': '#ef4444', // Red
+        'editing process': '#f97316', // Orange
+        'send to vendor': '#3b82f6', // Blue
+        'quotation received': '#9333ea', // Purple
+        'request successfully': '#22c55e', // Light Green
+    };
+
+    console.log(status);
+
+    const color = statusColors[status] || '#d1d5db'; // Default to gray if status not found
+
+    return (
+        <div className="flex items-center space-x-2">
+            <span
+                className="inline-block w-2 h-2 rounded-full animate-blink"
+                style={{ backgroundColor: color }}
+            ></span>
+            <span className="text-sm font-large">{status}</span>
+        </div>
+    );
+};
+
+
 const Modal: React.FC<RequestModalProps> = ({isOpen, onClose, request}) => {
     if (!isOpen || !request) return null;
 
@@ -30,7 +58,13 @@ const Modal: React.FC<RequestModalProps> = ({isOpen, onClose, request}) => {
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50 text-black">
             <div className="bg-black bg-opacity-50 absolute inset-0" onClick={onClose}></div>
-            <div className="bg-white p-6 rounded-lg shadow-lg z-10 w-full max-w-6xl mx-4">
+            <div className="bg-white p-6 rounded-lg shadow-lg z-10 w-full max-w-6xl mx-4 relative">
+
+                {/* Blinking Status Indicator */}
+                <div className="absolute top-4 right-4">
+                    <BlinkingStatusIndicator status={request.status} />
+                </div>
+
                 <h2 className="text-2xl font-bold mb-6">Request Details</h2>
 
                 {/* Section A: Request Information */}
