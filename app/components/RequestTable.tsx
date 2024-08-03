@@ -86,14 +86,15 @@ const ProgressTracker = () => {
     const filteredRequests = requests.filter(request => {
         const query = searchQuery.toLowerCase();
         return (
-            request.dateCreated.toLowerCase().includes(query) ||
-            request.requester.toLowerCase().includes(query) ||
-            request.picContact.toLowerCase().includes(query) ||
-            request.department.toLowerCase().includes(query) ||
-            request.entity.toLowerCase().includes(query) ||
-            request.status.toLowerCase().includes(query)
+            (request.dateCreated?.toLowerCase() || '').includes(query) ||
+            (request.requester?.toLowerCase() || '').includes(query) ||
+            (request.picContact?.toLowerCase() || '').includes(query) ||
+            (request.department?.toLowerCase() || '').includes(query) ||
+            (request.entity?.toLowerCase() || '').includes(query) ||
+            (request.status?.toLowerCase() || '').includes(query)
         );
     });
+
 
     const indexOfLastRow = currentPage * rowsPerPage;
     const indexOfFirstRow = indexOfLastRow - rowsPerPage;
@@ -152,7 +153,7 @@ const ProgressTracker = () => {
                               <span style={circleStyles(statusColors[request.status])}></span>
                               {request.status}
                           </td>
-                          <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">
+                          <td className="text-gray-600 px-6 py-4 whitespace-nowrap border" onClick={e=>e.stopPropagation()}>
                             {request.downloadLink ? (
                               <a href={request.downloadLink} className="text-blue-500">Download</a>
                           ) : (

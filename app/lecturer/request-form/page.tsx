@@ -15,12 +15,15 @@ export default function ItemRequest() {
     const [headers, setHeaders] = useState<string[]>([]);
     const [extractedValues, setExtractedValues] = useState<string[]>([]);
     const [sectionAHeaders, setSectionAHeaders] = useState<string[]>([]);
+    const [downloadURL, setDownloadURL] = useState<string>('');
 
-    const handleExcelDataChange = (sectionA: any[], header: string[], data: any[], extractedValues: any[]) => {
+
+    const handleExcelDataChange = (sectionA: any[], header: string[], data: any[], extractedValues: any[], downloadURL:string) => {
         setSectionA(sectionA);
         setHeaders(header);
         setExcelData(data);
         setExtractedValues(extractedValues);
+        setDownloadURL(downloadURL);
 
         // Extract headers from sectionA
         const sectionAHeaderList = sectionA.map(row => row[0].replace(':', '').trim());
@@ -40,7 +43,8 @@ export default function ItemRequest() {
                     sectionA,
                     excelData: sanitizedExcelData,
                     status: "Pending",
-                    dateCreated: new Date().toISOString()
+                    dateCreated: new Date().toISOString(),
+                    downloadLink: downloadURL,
                 });
                 alert('Data submitted successfully.');
             } catch (e) {
