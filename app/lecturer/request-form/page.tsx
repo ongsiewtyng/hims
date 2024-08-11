@@ -1,9 +1,12 @@
 'use client'
 import RequestForm from '../../components/RequestForm';
 import SidenavLecturer from "../../components/SidenavLecturer";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {database} from "../../services/firebase";
 import {push, ref, set} from "firebase/database";
+import {getAuth} from "firebase/auth";
+
+
 
 
 export default function ItemRequest() {
@@ -38,6 +41,15 @@ export default function ItemRequest() {
                     Object.fromEntries(Object.entries(row).map(([key, value]) => [key, value ?? '']))
                 );
 
+                const auth = getAuth();
+                const user = auth.currentUser;
+                const userID = user ? user.uid : null;
+
+                if (!userID) {
+                    alert('User not found.');
+                    return;
+                }
+
                 const newRequestRef = push(ref(database, 'requests'));
                 await set(newRequestRef, {
                     sectionA,
@@ -45,6 +57,7 @@ export default function ItemRequest() {
                     status: "Pending",
                     dateCreated: new Date().toISOString(),
                     downloadLink: downloadURL,
+                    userID: userID
                 });
                 alert('Data submitted successfully.');
             } catch (e) {

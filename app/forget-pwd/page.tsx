@@ -43,7 +43,7 @@ export default function ForgotPassword() {
                             type="email"
                             autoComplete="email"
                             required
-                            className="appearance-none block w-full mt-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            className="text-black appearance-none block w-full mt-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                             placeholder="Email Address"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -76,7 +76,7 @@ export default function ForgotPassword() {
                     )}
 
                     <p className="mt-2 text-center text-sm text-gray-600">
-                        <a href="/app/sign-in" className="font-medium text-indigo-600 hover:text-indigo-500">Got an account?</a>
+                        <a href="/sign-in" className="font-medium text-indigo-600 hover:text-indigo-500">Got an account?</a>
                     </p>
                 </form>
             </div>
