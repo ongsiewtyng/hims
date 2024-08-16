@@ -14,7 +14,7 @@ const menuItems = [
         path: '/lecturer/request-form',
     },
     {
-        name: "Track Progress",
+        name: "Track Request",
         icon: <HiOutlineChartBar className="w-8 h-8"/>,
         path: '/lecturer/track-progress',
     },

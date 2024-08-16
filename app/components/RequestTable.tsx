@@ -13,6 +13,9 @@ interface Request {
     entity: string;
     status: string;
     downloadLink: string | null;
+    excelData: any[];
+    sectionA: any[];
+    requestId?: string;
 }
 
 
@@ -41,12 +44,12 @@ const ProgressTracker = () => {
 
     const statusColors = {
         Pending: '#f59e0b', // Yellow
-        'admin approved': '#10b981', // Green
-        'admin disapproved': '#ef4444', // Red
-        'editing process': '#f97316', // Orange
-        'send to vendor': '#3b82f6', // Blue
-        'quotation received': '#9333ea', // Purple
-        'request successfully': '#22c55e', // Light Green
+        'Admin Approved': '#10b981', // Green
+        'Admin Disapproved': '#ef4444', // Red
+        'Needs Editing': '#f97316', // Orange
+        'Send to Vendor': '#3b82f6', // Blue
+        'Quotation Received': '#9333ea', // Purple
+        'Request Successfully': '#22c55e', // Light Green
     };
 
       // CSS for the blinking circle
@@ -75,13 +78,14 @@ const ProgressTracker = () => {
                     downloadLink: data[key].downloadLink || null,
                     excelData: data[key].excelData || [],
                     sectionA: data[key].sectionA || [],
+                    requestId: key
                 }));
                     setRequests(formattedData);
             } else {
                 setRequests([]); // Handle case where there is no data
             }
         });
-        }, []);
+    }, []);
 
     const filteredRequests = requests.filter(request => {
         const query = searchQuery.toLowerCase();
@@ -124,69 +128,76 @@ const ProgressTracker = () => {
           </div>
           {filteredRequests.length > 0 ? (
               <>
-              <table className="bg-white p-8 rounded-2xl shadow-2xl w-full">
-                  <thead className="bg-gray-50">
-                  <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Submission
-                          Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Requester</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">PIC &
-                          Contact Number
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Department</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Download</th>
-                  </tr>
-                  </thead>
-                  <tbody>
-                  {currentRequests.map((request, index) => (
-                      <tr key={index} className="cursor-pointer" onClick={() => setSelectedRequest(request)}>
-                          <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">{request.dateCreated}</td>
-                          <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">{request.requester}</td>
-                          <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">{request.picContact}</td>
-                          <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">{request.department}</td>
-                          <td
-                              className="text-gray-600 px-6 py-4 whitespace-nowrap border"
-                              style={{color: statusColors[request.status] || '#6b7280'}} // Default color if status not found
-                          >
-                              <span style={circleStyles(statusColors[request.status])}></span>
-                              {request.status}
-                          </td>
-                          <td className="text-gray-600 px-6 py-4 whitespace-nowrap border" onClick={e=>e.stopPropagation()}>
-                            {request.downloadLink ? (
-                              <a href={request.downloadLink} className="text-blue-500">Download</a>
-                          ) : (
-                          'N/A'
-                          )}
-                          </td>
+                  <table className="bg-white p-8 rounded-2xl shadow-2xl w-full">
+                      <thead className="bg-gray-50">
+                      <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Submission
+                              Date
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Requester</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">PIC
+                              &
+                              Contact Number
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Department</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Download</th>
                       </tr>
-                  ))}
-                  </tbody>
-              </table>
-
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                  <div className="flex justify-center items-center mt-4">
-                      <button
-                          className="focus:outline-none"
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                      >
-                          <HiOutlineArrowLeft
-                              className="text-gray-500 text-xl hover:text-gray-700 transition-colors"/>
-                      </button>
-                  <div className="flex space-x-2 mx-4">
-                      {[...Array(totalPages)].map((_, index) => (
-                          <div
-                              key={index}
-                              onClick={() => handlePageChange(index + 1)}className={`w-6 h-6 flex items-center justify-center cursor-pointer rounded-full transition-transform ${
-                              currentPage === index + 1 ? 'bg-blue-500 text-white transform scale-125' : 'bg-gray-300 text-black'
-                          }`}
-                          >
-                              {index + 1}
-                          </div>
+                      </thead>
+                      <tbody>
+                      {currentRequests.map((request, index) => (
+                          <tr key={index} className="cursor-pointer" onClick={() => {
+                              console.log("Selected Request:", request.requestId);  // Log only the selected request
+                              setSelectedRequest(request);
+                          }}>
+                              <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">{request.dateCreated}</td>
+                              <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">{request.requester}</td>
+                              <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">{request.picContact}</td>
+                              <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">{request.department}</td>
+                              <td
+                                  className="text-gray-600 px-6 py-4 whitespace-nowrap border"
+                                  style={{color: statusColors[request.status] || '#6b7280'}} // Default color if status not found
+                              >
+                                  <span style={circleStyles(statusColors[request.status])}></span>
+                                  {request.status}
+                              </td>
+                              <td className="text-gray-600 px-6 py-4 whitespace-nowrap border"
+                                  onClick={e => e.stopPropagation()}>
+                                  {request.downloadLink ? (
+                                      <a href={request.downloadLink} className="text-blue-500">Download</a>
+                                  ) : (
+                                      'N/A'
+                                  )}
+                              </td>
+                          </tr>
                       ))}
+                      </tbody>
+
+                  </table>
+
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                      <div className="flex justify-center items-center mt-4">
+                          <button
+                              className="focus:outline-none"
+                              onClick={() => handlePageChange(currentPage - 1)}
+                              disabled={currentPage === 1}
+                          >
+                              <HiOutlineArrowLeft
+                                  className="text-gray-500 text-xl hover:text-gray-700 transition-colors"/>
+                          </button>
+                          <div className="flex space-x-2 mx-4">
+                              {[...Array(totalPages)].map((_, index) => (
+                                  <div
+                                      key={index}
+                                      onClick={() => handlePageChange(index + 1)}
+                                      className={`w-6 h-6 flex items-center justify-center cursor-pointer rounded-full transition-transform ${
+                                          currentPage === index + 1 ? 'bg-blue-500 text-white transform scale-125' : 'bg-gray-300 text-black'
+                                      }`}
+                                  >
+                                      {index + 1}
+                                  </div>
+                              ))}
                       <button
                           className="focus:outline-none"
                           onClick={() => handlePageChange(currentPage + 1)}
