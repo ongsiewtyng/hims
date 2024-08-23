@@ -1,17 +1,17 @@
 'use client'
 import RequestForm from '../../components/RequestForm';
 import SidenavLecturer from "../../components/SidenavLecturer";
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import {database} from "../../services/firebase";
 import {push, ref, set} from "firebase/database";
 import {getAuth} from "firebase/auth";
-
-
-
+import { HiOutlinePencil } from "react-icons/hi";
 
 export default function ItemRequest() {
-    // fields for form
     const [isSidenavOpen, setIsSidenavOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false); // State for edit mode
+    const [formKey, setFormKey] = useState(0); // Key to control Page remount
+    const [showExcelData, setShowExcelData] = useState(false);
 
     const [sectionA, setSectionA] = useState<any[]>([]);
     const [excelData, setExcelData] = useState<any[]>([]);
@@ -21,17 +21,29 @@ export default function ItemRequest() {
     const [downloadURL, setDownloadURL] = useState<string>('');
 
 
-    const handleExcelDataChange = (sectionA: any[], header: string[], data: any[], extractedValues: any[], downloadURL:string) => {
+    const handleExcelDataChange = (sectionA: any[], header: string[], data: any[], extractedValues: any[], downloadURL: string) => {
         setSectionA(sectionA);
         setHeaders(header);
         setExcelData(data);
         setExtractedValues(extractedValues);
         setDownloadURL(downloadURL);
 
-        // Extract headers from sectionA
         const sectionAHeaderList = sectionA.map(row => row[0].replace(':', '').trim());
-        setSectionAHeaders(sectionAHeaderList); // Update state with section A headers
+        setSectionAHeaders(sectionAHeaderList);
 
+        setShowExcelData(true); // Show Excel data when data is available
+    };
+
+    const handleInputChange = (index: number, value: string) => {
+        const updatedValues = [...extractedValues];
+        updatedValues[index] = value;
+        setExtractedValues(updatedValues);
+    };
+
+    const handleExcelInputChange = (rowIndex: number, colHeader: string, value: string) => {
+        const updatedData = [...excelData];
+        updatedData[rowIndex][colHeader] = value;
+        setExcelData(updatedData);
     };
 
     const handleSubmit = async () => {
@@ -60,6 +72,10 @@ export default function ItemRequest() {
                     userID: userID
                 });
                 alert('Data submitted successfully.');
+                setShowExcelData(false);
+                // Change formKey to remount the Page component
+                setFormKey(prevKey => prevKey + 1);
+
             } catch (e) {
                 console.error('Error adding document: ', e);
                 alert('Error adding document: ' + e.message);
@@ -67,6 +83,9 @@ export default function ItemRequest() {
         }
     };
 
+    const toggleEditMode = () => {
+        setIsEditMode(!isEditMode);
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -75,42 +94,57 @@ export default function ItemRequest() {
                 <div className="flex items-center justify-center h-16 text-black">
                     <h1 className="text-2xl font-bold">Item Request</h1>
                 </div>
-                <RequestForm onExcelDataChange={handleExcelDataChange} />
-                {excelData.length > 0 && (
+                {/* Use formKey as the key for Page */}
+                <RequestForm key={formKey} onExcelDataChange={handleExcelDataChange} />
+                {showExcelData && excelData.length > 0 && (
                     <div className="bg-white p-8 rounded-2xl shadow-2xl w-full" style={{width: '90rem'}}>
-                        <div>
+                        <div className="flex justify-between items-center">
                             <h2 className="text-2xl font-bold mb-4 text-gray-700">Section A</h2>
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full bg-white shadow-md rounded-lg">
-                                    <thead className="bg-gray-100 border-b">
-                                    <tr>
-                                        {sectionAHeaders.length > 0 && sectionAHeaders.map((header, index) => (
-                                            <th
-                                                key={index}
-                                                className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-                                            >
-                                                {header}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr>
-                                        {extractedValues.length > 0 && extractedValues.map((value, index) => (
-                                            <td
-                                                key={index}
-                                                className="py-3 px-4 border-b text-sm text-gray-700"
-                                            >
-                                                {value}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            <button onClick={toggleEditMode}>
+                                <HiOutlinePencil className="h-5 w-5 text-gray-500 mr-2" />
+                            </button>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full bg-white shadow-md rounded-lg">
+                                <thead className="bg-gray-100 border-b">
+                                <tr>
+                                    {sectionAHeaders.length > 0 && sectionAHeaders.map((header, index) => (
+                                        <th
+                                            key={index}
+                                            className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+                                        >
+                                            {header}
+                                        </th>
+                                    ))}
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    {extractedValues.length > 0 && extractedValues.map((value, index) => (
+                                        <td
+                                            key={index}
+                                            className="py-3 px-4 border-b text-sm text-gray-700"
+                                        >
+                                            {isEditMode ? (
+                                                <input
+                                                    type="text"
+                                                    value={value}
+                                                    onChange={(e) => handleInputChange(index, e.target.value)}
+                                                    className="w-full px-2 py-1 border rounded"
+                                                />
+                                            ) : (
+                                                value
+                                            )}
+                                        </td>
+                                    ))}
+                                </tr>
+                                </tbody>
+                            </table>
                         </div>
                         <div className="mt-8">
-                            <h2 className="text-2xl font-bold mb-4 text-gray-700">Section B</h2>
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-2xl font-bold mb-4 text-gray-700">Section B</h2>
+                            </div>
                             <div className="overflow-x-auto">
                                 <table className="min-w-full bg-white shadow-md rounded-lg">
                                     <thead className="bg-gray-100 border-b">
@@ -133,7 +167,16 @@ export default function ItemRequest() {
                                                     key={colIndex}
                                                     className="py-3 px-4 border-b text-sm text-gray-700"
                                                 >
-                                                    {row[header]}
+                                                    {isEditMode ? (
+                                                        <input
+                                                            type="text"
+                                                            value={row[header] || ''}
+                                                            onChange={(e) => handleExcelInputChange(rowIndex, header, e.target.value)}
+                                                            className="w-full px-2 py-1 border rounded"
+                                                        />
+                                                    ) : (
+                                                        row[header]
+                                                    )}
                                                 </td>
                                             ))}
                                         </tr>

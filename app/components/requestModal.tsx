@@ -1,8 +1,10 @@
 import React, {useEffect, useState} from 'react';
 import "../admin/styles/blink.css";
-import {ref} from "@firebase/database";
+import {ref, onValue} from "@firebase/database";
 import {update} from "firebase/database";
 import {database} from "../services/firebase";
+import VendorSelection from "../components/VendorSelection";
+import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
 
 interface RequestModalProps {
     isOpen: boolean;
@@ -51,9 +53,30 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [remark, setRemark] = useState('');
     const [rejectionType, setRejectionType] = useState<'Needs Editing' | 'Admin Disapproved'>('Admin Disapproved');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedFileUrl, setSelectedFileUrl] = useState(''); // URL of the file to send
+    //const [vendors, setVendors] = useState<Vendor[]>([]); // List of vendors
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+
+    // useEffect(() => {
+    //     const vendorsRef = ref(database, 'vendors');
+    //     onValue(vendorsRef, (snapshot) => {
+    //         const data = snapshot.val();
+    //         if (data) {
+    //             const vendorList = Object.keys(data).map(key => ({
+    //                 id: key,
+    //                 name: data[key].name,
+    //                 email: data[key].email,
+    //             }));
+    //             setVendors(vendorList);
+    //         }
+    //     });
+    // }, []);
 
 
-    const toTitleCase = (str) => {
+    const toTitleCase = (str : any) => {
         return typeof str === 'string'
             ? str.replace(/\w\S*/g, (txt) => {
                 return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
@@ -71,26 +94,63 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
 
         console.log("Updating status with:", { status, remark, requestId: request.requestId });
 
+        // Avoid re-triggering if status is the same
+        if (request.status === status && remark === "") {
+            console.log("Status is already the same, no update needed.");
+            return;
+        }
+
         // Perform the update operation
         update(requestRef, {
             status: status,
             remark: remark,
         }).then(() => {
             console.log("Status updated successfully");
-            onClose(); // Close the modal only after successful update
+
         }).catch((error) => {
             console.error("Error updating status:", error);
         });
     };
 
-    const handleApprove = () => {
+
+    const handleApprove = (fileUrl: string) => {
+        setSelectedFileUrl(fileUrl);
+        setIsModalOpen(true);
         updateStatus('Admin Approved');
     };
+
+    // const handleSendEmail = async (vendor: Vendor) => {
+    //     try {
+    //         const response = await fetch('/api/sendEmail', {
+    //             method: 'POST',
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //             },
+    //             body: JSON.stringify({
+    //                 recipient: vendor.email,
+    //                 fileUrl: selectedFileUrl,
+    //             }),
+    //         });
+    //
+    //         if (response.ok) {
+    //             alert('Email sent successfully');
+    //         } else {
+    //             alert('Failed to send email');
+    //         }
+    //     } catch (error) {
+    //         console.error('Error sending email:', error);
+    //         alert('Error sending email');
+    //     }
+    // };
 
     const handleRejectWithRemark = () => {
         const statusToUpdate = rejectionType;
         updateStatus(statusToUpdate, remark);
         setShowRejectModal(false); // Close the reject modal
+        setSuccess('Rejection Submitted')
+        setTimeout(() => {
+            onClose(); // Close the modal after 5 seconds
+        }, 5000);
     };
 
     return (
@@ -99,7 +159,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
             <div className="bg-white p-6 rounded-lg shadow-lg z-10 w-full max-w-6xl mx-4 relative">
                 <div className="absolute top-4 right-4">
                     {/* Blinking Status Indicator */}
-                    <BlinkingStatusIndicator status={request.status} />
+                    <BlinkingStatusIndicator status={request?.status || 'Unknown'} />
                 </div>
                 <h2 className="text-2xl font-bold mb-6">Request Details</h2>
 
@@ -110,7 +170,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                         <table className="min-w-full bg-white border-collapse">
                             <thead>
                             <tr className="bg-gray-100 border-b">
-                                {request.sectionA && request.sectionA.length > 0 &&
+                                {request?.sectionA && request.sectionA.length > 0 &&
                                     request.sectionA.map((data, index) => (
                                         <th
                                             key={index}
@@ -122,7 +182,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                             </tr>
                             </thead>
                             <tbody>
-                            {request.sectionA && request.sectionA.length > 0 ? (
+                            {request?.sectionA && request.sectionA.length > 0 ? (
                                 <tr className="even:bg-gray-50">
                                     {request.sectionA.map((data, index) => (
                                         <td
@@ -136,7 +196,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                             ) : (
                                 <tr>
                                     <td className="py-3 px-4 text-sm text-gray-700"
-                                        colSpan={request.sectionA.length}>
+                                        colSpan={request?.sectionA?.length}>
                                         No Section A Data Available
                                     </td>
                                 </tr>
@@ -153,7 +213,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                         <table className="min-w-full bg-white border-collapse">
                             <thead>
                             <tr className="bg-gray-100 border-b">
-                                {request.excelData && request.excelData.length > 0 &&
+                                {request?.excelData && request.excelData.length > 0 &&
                                     Object.keys(request.excelData[0]).map((header, index) => (
                                         <th
                                             key={index}
@@ -165,7 +225,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                             </tr>
                             </thead>
                             <tbody>
-                            {request.excelData && request.excelData.length > 0 ? (
+                            {request?.excelData && request.excelData.length > 0 ? (
                                 request.excelData.map((data, index) => (
                                     <tr key={index} className="even:bg-gray-50">
                                         {Object.values(data).map((value, subIndex) => (
@@ -199,6 +259,13 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                     >
                         Approve
                     </button>
+                    {/*<VendorSelection*/}
+                    {/*    isOpen={isModalOpen}*/}
+                    {/*    onClose={() => setIsModalOpen(false)}*/}
+                    {/*    fileUrl={selectedFileUrl}*/}
+                    {/*    onSendEmail={handleSendEmail}*/}
+                    {/*    vendors={vendors}*/}
+                    {/*/>*/}
                     <button
                         onClick={() => setShowRejectModal(true)}
                         className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
@@ -274,6 +341,17 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                 )}
 
             </div>
+            {/* Notification Bar */}
+            {(error || success) && (
+                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4">
+                    {success ? (
+                        <HiCheckCircle className="h-6 w-6 mr-2 text-green-500" />
+                    ) : (
+                        <HiXCircle className="h-6 w-6 mr-2 text-red-500" />
+                    )}
+                    <span>{error || success}</span>
+                </div>
+            )}
         </div>
     );
 };

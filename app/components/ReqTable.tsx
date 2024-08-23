@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import {off, ref} from "@firebase/database";
-import {database} from "../services/firebase";
-import {onValue} from "firebase/database";
+import { off, ref } from "@firebase/database";
+import { database } from "../services/firebase";
+import {onValue, set} from "firebase/database";
+import DetailsModal from "./DetailsModal";
 
 interface Request {
     dateCreated: string;
@@ -11,6 +12,10 @@ interface Request {
     entity: string;
     status: string;
     downloadLink: string | null;
+    id: string;
+    sectionA: { [key: string]: string[] };
+    excelData?: { [key: string]: string }[];
+
 }
 
 interface RequestData {
@@ -22,9 +27,11 @@ interface RequestData {
     excelData?: { [key: string]: string }[];
 }
 
-
-const ReqTable = ({userID}) => {
+const ReqTable = ({ userID }) => {
     const [requests, setRequests] = useState<Request[]>([]);
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [selectedRequest,setSelectedRequest] = useState<Request | null>(null);
+
 
     const formatDate = (date: string) => {
         const options: Intl.DateTimeFormatOptions = {
@@ -44,12 +51,12 @@ const ReqTable = ({userID}) => {
 
     const statusColors = {
         Pending: '#f59e0b', // Yellow
-        'admin approved': '#10b981', // Green
-        'admin disapproved': '#ef4444', // Red
-        'editing process': '#f97316', // Orange
-        'send to vendor': '#3b82f6', // Blue
-        'quotation received': '#9333ea', // Purple
-        'request successfully': '#22c55e', // Light Green
+        'Admin Approved': '#10b981', // Green
+        'Admin Disapproved': '#ef4444', // Red
+        'Needs Editing': '#f97316', // Orange
+        'Send to Vendor': '#3b82f6', // Blue
+        'Quotation Received': '#9333ea', // Purple
+        'Request Successfully': '#22c55e', // Light Green
     };
 
     // CSS for the blinking circle
@@ -60,7 +67,7 @@ const ReqTable = ({userID}) => {
         backgroundColor: color,
         display: 'inline-block',
         marginRight: '8px',
-        animation: 'blink 1.3s infinite',
+        animation: 'blink 1.0s infinite',
     });
 
     useEffect(() => {
@@ -108,6 +115,16 @@ const ReqTable = ({userID}) => {
         };
     }, [userID]);
 
+    const handleRowClick = (request: Request) => {
+        if (request.status === 'Needs Editing') {
+            setSelectedRequest(request);
+            setIsModalOpen(true);
+        }
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+    };
 
     return (
         <div>
@@ -125,7 +142,7 @@ const ReqTable = ({userID}) => {
                     </thead>
                     <tbody>
                     {requests.map((request, index) => (
-                        <tr key={index} className="cursor-pointer">
+                        <tr key={request.id} className="cursor-pointer" onClick={() => handleRowClick(request)}>
                             <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">{request.dateCreated}</td>
                             <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">{request.requester}</td>
                             <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">{request.picContact}</td>
@@ -134,7 +151,8 @@ const ReqTable = ({userID}) => {
                                 <span style={circleStyles(statusColors[request.status])}></span>
                                 {request.status}
                             </td>
-                            <td className="text-gray-600 px-6 py-4 whitespace-nowrap border" onClick={e => e.stopPropagation()}>
+                            <td className="text-gray-600 px-6 py-4 whitespace-nowrap border"
+                                onClick={e => e.stopPropagation()}>
                                 {request.downloadLink ? (
                                     <a href={request.downloadLink} className="text-blue-500">Download</a>
                                 ) : (
@@ -170,6 +188,12 @@ const ReqTable = ({userID}) => {
                     </table>
                 </div>
             }
+            {isModalOpen && selectedRequest && (
+                <DetailsModal
+                    onClose={closeModal}
+                    request={selectedRequest}
+                />
+            )}
         </div>
     );
 };
