@@ -264,12 +264,12 @@ export default function Home() {
 
     const statusColors = {
         Pending: '#f59e0b', // Yellow
-        'admin approved': '#10b981', // Green
-        'admin disapproved': '#ef4444', // Red
-        'editing process': '#f97316', // Orange
-        'send to vendor': '#3b82f6', // Blue
-        'quotation received': '#9333ea', // Purple
-        'request successfully': '#22c55e', // Light Green
+        'Admin Approved': '#10b981', // Green
+        'Admin Disapproved': '#ef4444', // Red
+        'Needs Editing': '#f97316', // Orange
+        'Send to Vendor': '#3b82f6', // Blue
+        'Quotation Received': '#9333ea', // Purple
+        'Request Successfully': '#22c55e', // Light Green
     };
 
     // CSS for the blinking circle
@@ -308,6 +308,11 @@ export default function Home() {
             }
         });
     }, []);
+
+    // Function to count pending requests
+    const countPendingRequests = () => {
+        return requests.filter(request => request.status === 'Pending').length;
+    };
 
 
     return (
@@ -358,15 +363,17 @@ export default function Home() {
                                 </div>
                             </div>
                             <div className="w-full sm:w-1/2 md:w-1/4 p-2">
-                                <div className="w-full h-40 border border-gray-300 rounded-lg bg-white flex flex-col justify-start p-4">
+                                <div
+                                    className="w-full h-40 border border-gray-300 rounded-lg bg-white flex flex-col justify-start p-4">
                                     <div className="flex items-start justify-between w-full">
-                                        <p className="text-gray-700">Total Request</p>
+                                        <p className="text-gray-700">Requests Pending</p>
                                         <div
                                             className="flex items-center justify-center rounded-lg p-2 w-10 h-10"
-                                            style={{ backgroundColor: '#ead6fd' }}>
-                                            <HiOutlineDocumentDownload className="text-xl" style={{ color: '#a855f7' }} />
+                                            style={{backgroundColor: '#ead6fd'}}>
+                                            <HiOutlineDocumentDownload className="text-xl" style={{color: '#a855f7'}}/>
                                         </div>
                                     </div>
+                                    <p className="text-gray-900 font-medium text-xl mt-0.5">{countPendingRequests()}</p>
                                 </div>
                             </div>
                         </div>

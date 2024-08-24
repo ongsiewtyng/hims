@@ -2,7 +2,7 @@
 import React, {useEffect, useState} from 'react';
 import Table from "../../components/Table";
 import {database} from "../../services/firebase";
-import {get, onValue, push, ref, set, update} from "firebase/database";
+import {get, onValue, push, ref, set, update} from "@firebase/database";
 import Sidenav from "../../components/Sidenav";
 import {HiCheckCircle, HiXCircle, HiOutlineShoppingBag, HiOutlineUserGroup, HiOutlineViewGridAdd, HiOutlineLockClosed} from "react-icons/hi";
 import "../styles/Homebuttons.css";
@@ -43,11 +43,6 @@ export default function Dashboard() {
 
     const [error, setError] = useState<string | null>(null);
     const [isSidenavOpen, setIsSidenavOpen] = useState(false);
-    const [role, setRole] = useState('');
-
-    useEffect(() => {
-
-    }, []);
 
     const addActivity = async (action: string, item: any) => {
         try {
@@ -258,6 +253,7 @@ export default function Dashboard() {
             await addActivity('archive', itemData.foodName);
         }
     };
+
     
     return (
         <div className="min-h-screen flex bg-gray-50">

@@ -1,6 +1,6 @@
 'use client'
 import React, {useEffect} from 'react';
-import {get, ref, update, onValue, push} from 'firebase/database';
+import {get, ref, update, onValue, push} from '@firebase/database';
 import { database } from '../services/firebase';
 import { FiEdit3} from "react-icons/fi";
 import { IoStorefrontOutline } from "react-icons/io5";
@@ -15,6 +15,8 @@ interface Vendors {
     foodName: string;
     stocks: string;
     unit: string;
+    archive: boolean;
+
 }
 
 const Table: React.FC= () => {
@@ -23,8 +25,6 @@ const Table: React.FC= () => {
     const [editDataModal, setEditDataModal] = React.useState<Vendors | null>(null);
     const [message, setMessage] = React.useState<string | null>(null);
     const [searchQuery, setSearchQuery] = React.useState<string>('');
-
-
 
     useEffect(() => {
         const dataRef = ref(database, 'foodItems/');
@@ -41,8 +41,6 @@ const Table: React.FC= () => {
             } else {
                 console.log("No data available");
             }
-        }, {
-            onlyOnce: true
         });
 
     }, []);
@@ -62,8 +60,6 @@ const Table: React.FC= () => {
             } else {
                 console.log("No data available");
             }
-        }, {
-            onlyOnce: true
         });
     }
     , []);
@@ -97,7 +93,7 @@ const Table: React.FC= () => {
                     setTimeout(() => {
                         setMessage(null);
                         setEditDataModal(null); // Close the modal after 3 seconds
-                    }, 3000);
+                    }, 2000);
                 }
             } else {
                 console.log("No data available");
@@ -127,20 +123,21 @@ const Table: React.FC= () => {
     );
 
     const filteredData = data.filter(item =>
-        item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        !item.archive &&
+        (item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.foodName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.unit.toLowerCase().includes(searchQuery.toLowerCase())
+        item.unit.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
     // Combine filtered vendors and data
     const combinedData = filteredVendors.length > 0
         ? filteredVendors.map(vendor => ({
             ...vendor,
-            items: data.filter(item => item.vendor === vendor.name)
+            items: data.filter(item => item.vendor === vendor.name && !item.archive)
         }))
         : vendors.map(vendor => ({
             ...vendor,
-            items: filteredData.filter(item => item.vendor === vendor.name)
+            items: filteredData.filter(item => item.vendor === vendor.name && !item.archive)
         }));
 
 
