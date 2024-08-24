@@ -14,6 +14,11 @@ const menuItems = [
         path: '/lecturer/request-form',
     },
     {
+        name: "Track Request",
+        icon: <HiOutlineChartBar className="w-8 h-8"/>,
+        path: '/lecturer/track-progress',
+    },
+    {
         name: "Logout",
         icon: <HiOutlineLogout className="w-8 h-8" />,
         path: '/sign-in',

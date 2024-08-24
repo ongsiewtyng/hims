@@ -6,7 +6,7 @@ import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/
 import '../components/loader.css';
 
 type RequestFormProps = {
-    onExcelDataChange: (sectionA: any[], header: string[], data: any[], extractedValues: any[]) => void;
+    onExcelDataChange: (sectionA: any[], header: string[], data: any[], extractedValues: any[], downloadURL: string) => void;
 };
 
 const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
@@ -18,6 +18,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
     const [header, setHeader] = useState<string[]>([]);
     const [data, setData] = useState<any[]>([]);
     const [sectionA, setSectionA] = useState<any[]>([]);
+    const [downloadLink, setDownloadLink] = useState<string | null>(null);
 
 
 
@@ -146,11 +147,13 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
                             console.log('Extracted Values:', extractedValues);
                             console.log('Header:', headerRow); // Log the header row
                             console.log('Data Rows:', dataRows); // Log the data rows
+                            console.log('Download URL:', downloadURL);
 
                             setSectionA(sectionA);
                             setHeader(headerRow);
                             setData(dataRows);
-                            onExcelDataChange(sectionA, headerRow, dataRows, extractedValues);
+                            setDownloadLink(downloadURL);
+                            onExcelDataChange(sectionA, headerRow, dataRows, extractedValues, downloadURL);
                         }
                     }
                 };

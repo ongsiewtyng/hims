@@ -319,7 +319,7 @@ export default function Home() {
         <div className="min-h-screen flex bg-gray-50">
             <Sidenav setIsSidenavOpen={setIsSidenavOpen}/>
             <div className= {`flex-1 bg-gray-50 transition-all duration-300 ${isSidenavOpen ? 'ml-64' : 'ml-20'} p-8`}>
-                <Header />
+                <Header/>
                 <div className="container mx-auto p-4">
                     <div className="flex justify-between mb-4">
                         <div className="flex-1 flex flex-wrap justify-between">
