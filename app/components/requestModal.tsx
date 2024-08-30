@@ -1,10 +1,12 @@
 import React, {useEffect, useState} from 'react';
 import "../admin/styles/blink.css";
-import {ref, onValue} from "@firebase/database";
-import {update} from "firebase/database";
+import {ref, onValue, update, get} from "@firebase/database";
 import {database} from "../services/firebase";
 import VendorSelection from "../components/VendorSelection";
 import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
+import { sendEmail } from '../api/utils/sendEmail';
+import {getAuth} from "firebase/auth";
+
 
 interface RequestModalProps {
     isOpen: boolean;
@@ -33,8 +35,6 @@ const BlinkingStatusIndicator = ({ status }: { status: string }) => {
         'Request Successfully': '#22c55e', // Light Green
     };
 
-    //console.log(status);
-
     const color = statusColors[status] || '#d1d5db'; // Default to gray if status not found
 
     return (
@@ -56,9 +56,9 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedFileUrl, setSelectedFileUrl] = useState(''); // URL of the file to send
     //const [vendors, setVendors] = useState<Vendor[]>([]); // List of vendors
-    const [isUpdating, setIsUpdating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [status, setStatus] = useState<string>('Unknown');
 
     // useEffect(() => {
     //     const vendorsRef = ref(database, 'vendors');
@@ -75,6 +75,23 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
     //     });
     // }, []);
 
+    useEffect(() => {
+        if (request?.requestId) {
+            const statusRef = ref(database, `requests/${request.requestId}/status`);
+            const unsubscribe = onValue(statusRef, (snapshot) => {
+                const statusData = snapshot.val();
+                if (statusData) {
+                    setStatus(statusData);
+                }
+            });
+
+            // Clean up the listener when the component unmounts
+            return () => {
+                unsubscribe();
+            };
+        }
+    }, [request?.requestId]);
+
 
     const toTitleCase = (str : any) => {
         return typeof str === 'string'
@@ -84,7 +101,33 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
             : str;
     };
 
-    const updateStatus = (status: string, remark = "") => {
+
+    // Function to get the current user's email
+    const getCurrentUserEmail = () => {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        return user ? user.email : null;
+    };
+
+    // Function to get the recipient's email based on requestId and userId
+    const getRecipientEmail = async (requestId: string) => {
+        const requestRef = ref(database, `requests/${requestId}`);
+        const snapshot = await get(requestRef);
+        if (snapshot.exists()) {
+            const requestData = snapshot.val();
+            const userId = requestData.userID;
+            const userRef = ref(database, `users/${userId}`);
+            const userSnapshot = await get(userRef);
+            if (userSnapshot.exists()) {
+                const userData = userSnapshot.val();
+                return userData.email;
+            }
+        }
+        return null;
+    };
+
+
+    const updateStatus = async (status: string, remark = "") => {
         if (!request || !request.requestId) {
             console.error("Invalid request data");
             return;
@@ -96,27 +139,55 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
 
         // Avoid re-triggering if status is the same
         if (request.status === status && remark === "") {
+            setSuccess('Status is already the same, no update needed');
             console.log("Status is already the same, no update needed.");
             return;
         }
 
-        // Perform the update operation
-        update(requestRef, {
-            status: status,
-            remark: remark,
-        }).then(() => {
+        try {
+            // Perform the update operation
+            await update(requestRef, {
+                status: status,
+                remark: remark,
+            });
+
+            setSuccess('Status updated successfully');
             console.log("Status updated successfully");
 
-        }).catch((error) => {
+            // Get dynamic sender and recipient emails
+            const senderEmail = getCurrentUserEmail();
+            console.log("Sender email:", senderEmail);
+            const recipientEmail = await getRecipientEmail(request.requestId);
+            console.log("Recipient email:", recipientEmail);
+
+            if (senderEmail && recipientEmail) {
+                // Assuming the fileUrl is part of request data
+                const fileUrl = request.downloadLink || "";
+                console.log("File URL:", fileUrl);
+
+                // Send email notification with status and remark
+                const emailResponse = await sendEmail(senderEmail, recipientEmail,fileUrl, status, remark);
+                if (emailResponse.success) {
+                    console.log('Email sent successfully');
+                } else {
+                    console.error('Failed to send email:', emailResponse.message);
+                }
+            } else {
+                console.error('Failed to retrieve sender or recipient email');
+            }
+        } catch (error) {
+            setError('Error updating status');
             console.error("Error updating status:", error);
-        });
+        }
     };
+
 
 
     const handleApprove = (fileUrl: string) => {
         setSelectedFileUrl(fileUrl);
         setIsModalOpen(true);
-        updateStatus('Admin Approved');
+        updateStatus('Admin Approved')
+        setSuccess('Request Approved')
     };
 
     // const handleSendEmail = async (vendor: Vendor) => {
@@ -143,6 +214,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
     //     }
     // };
 
+
     const handleRejectWithRemark = () => {
         const statusToUpdate = rejectionType;
         updateStatus(statusToUpdate, remark);
@@ -159,7 +231,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
             <div className="bg-white p-6 rounded-lg shadow-lg z-10 w-full max-w-6xl mx-4 relative">
                 <div className="absolute top-4 right-4">
                     {/* Blinking Status Indicator */}
-                    <BlinkingStatusIndicator status={request?.status || 'Unknown'} />
+                    <BlinkingStatusIndicator status={status} />
                 </div>
                 <h2 className="text-2xl font-bold mb-6">Request Details</h2>
 
@@ -343,7 +415,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
             </div>
             {/* Notification Bar */}
             {(error || success) && (
-                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4">
+                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4 z-50">
                     {success ? (
                         <HiCheckCircle className="h-6 w-6 mr-2 text-green-500" />
                     ) : (

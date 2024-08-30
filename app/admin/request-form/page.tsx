@@ -2,10 +2,8 @@
 import RequestForm from '../../components/RequestForm';
 import Sidenav from "../../components/Sidenav";
 import React, {useEffect, useState} from "react";
-import {HiOutlineDocumentText} from "react-icons/hi";
-import {ref} from "@firebase/database";
+import {ref, onValue} from "@firebase/database";
 import {database} from "../../services/firebase";
-import {onValue} from "firebase/database";
 import Header from "../../components/Header";
 import RequestTable from "../../components/RequestTable";
 
