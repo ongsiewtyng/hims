@@ -4,8 +4,20 @@ import Table from "../../components/Table";
 import {database} from "../../services/firebase";
 import {get, onValue, push, ref, set, update} from "@firebase/database";
 import Sidenav from "../../components/Sidenav";
-import {HiCheckCircle, HiXCircle, HiOutlineShoppingBag, HiOutlineUserGroup, HiOutlineViewGridAdd, HiOutlineLockClosed} from "react-icons/hi";
+import {
+    HiCheckCircle,
+    HiXCircle,
+    HiOutlineShoppingBag,
+    HiOutlineUserGroup,
+    HiOutlineViewGridAdd,
+    HiOutlineLockClosed,
+    HiOutlineTruck, HiOutlineCloudDownload
+} from "react-icons/hi";
 import "../styles/Homebuttons.css";
+import "../styles/Homebuttons2.css";
+import "../styles/Homebuttons3.css";
+import StockUpdate from "../../components/StockUpdate";
+import UploadItems from "../../components/UploadItems";
 
 export default function Dashboard() {
     type Vendor = {
@@ -39,11 +51,18 @@ export default function Dashboard() {
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [vendorId, setVendorId] = useState<string | null>(null);
     const [archiveDataModal, setArchiveDataModal] = useState(false);
+    const [stockUpdateModal, setStockUpdateModal] = useState(false);
+    const [itemsModal, setItemsModal] = useState(false);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [foodItems, setFoodItems] = useState<FoodItems[]>([]);
 
     const [error, setError] = useState<string | null>(null);
     const [isSidenavOpen, setIsSidenavOpen] = useState(false);
+
+    const [excelData, setExcelData] = useState<any[]>([]);
+    const [headers, setHeaders] = useState<string[]>([]);
+    const [extractedValues, setExtractedValues] = useState<string[]>([]);
+    const [showExcelData, setShowExcelData] = useState(false);
 
     const addActivity = async (action: string, item: any) => {
         try {
@@ -178,6 +197,7 @@ export default function Dashboard() {
 
     }
 
+
     useEffect(() => {
         let isMounted = true;
         if ((addCategoryModal || addItemModal) && isMounted) {
@@ -257,64 +277,87 @@ export default function Dashboard() {
         }
     };
 
-    
+
+    const handleStockChange = (header: string[], data: any[], extractedValues: any[]) => {
+        setHeaders(header);
+        setExcelData(data);
+        setExtractedValues(extractedValues);
+
+
+        setShowExcelData(true); // Show Excel data when data is available
+    };
+
+    const handleItemsChange = (header: string[], data: any[], extractedValues: any[]) => {
+        setHeaders(header);
+        setExcelData(data);
+        setExtractedValues(extractedValues);
+        setShowExcelData(true); // Show Excel data when data is available
+    };
+
     return (
         <div className="min-h-screen flex bg-gray-50">
             <Sidenav setIsSidenavOpen={setIsSidenavOpen}/>
-            <div className= {`flex-1 bg-gray-50 transition-all duration-300 ${isSidenavOpen ? 'ml-64' : 'ml-20'} p-8`}>
+            <div className={`flex-1 bg-gray-50 transition-all duration-300 ${isSidenavOpen ? 'ml-64' : 'ml-20'} p-8`}>
                 <div className="container mx-auto px-4 py-8">
                     <h1 className="text-black text-3xl font-bold mb-4">Inventory Dashboard</h1>
                     <div className="rounded-lg overflow-hidden">
                         <div className="flex justify-between py-4">
+
+                            {/* Left Aligned Buttons */}
                             <div className="flex space-x-4">
                                 <button
                                     onClick={() => setAddItemModal(true)}
                                     className="custom-button"
                                 >
-                                    <svg width="24" height="24" viewBox="0 0 24 24">
-                                        {/* Your SVG icon here */}
-                                        <HiOutlineShoppingBag size={20}/>
-                                    </svg>
+                                    <HiOutlineShoppingBag size={20} />
                                     <span>Add Item</span>
                                 </button>
                                 <button
                                     onClick={() => setAddVendorModal(true)}
                                     className="custom-button"
                                 >
-                                    <svg width="24" height="24" viewBox="0 0 24 24">
-                                        {/* Your SVG icon here */}
-                                        <HiOutlineUserGroup size={20}/>
-                                    </svg>
+                                    <HiOutlineUserGroup size={20} />
                                     <span>Add Vendor</span>
                                 </button>
                                 <button
                                     onClick={() => setAddCategoryModal(true)}
                                     className="custom-button"
                                 >
-                                    <svg width="24" height="24" viewBox="0 0 24 24">
-                                        {/* Your SVG icon here */}
-                                        <HiOutlineViewGridAdd size={20}/>
-                                    </svg>
+                                    <HiOutlineViewGridAdd size={20} />
                                     <span>Add Category</span>
                                 </button>
                                 <button
                                     onClick={() => setArchiveDataModal(true)}
                                     className="custom-button"
                                 >
-                                    <svg width="24" height="24" viewBox="0 0 24 24">
-                                        {/* Your SVG icon here */}
-                                        <HiOutlineLockClosed size={20}/>
-                                    </svg>
+                                    <HiOutlineLockClosed size={20} />
                                     <span>Inactive Item</span>
                                 </button>
                             </div>
+
+                            {/* Right Aligned Buttons */}
+                            <div className="flex space-x-4">
+                                <button
+                                    onClick={() => setStockUpdateModal(true)}
+                                    className="custom-button2"
+                                >
+                                    <HiOutlineTruck size={20} />
+                                </button>
+                                <button
+                                    onClick={() => setItemsModal(true)}
+                                    className="custom-button3"
+                                >
+                                    <HiOutlineCloudDownload size={20} />
+                                </button>
+                            </div>
                         </div>
+
                         {/* Your table to display food items */}
                         <Table vendors={vendor}/>
                     </div>
-
                 </div>
             </div>
+
 
             {addItemModal && (
                 <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
@@ -602,6 +645,67 @@ export default function Dashboard() {
                     </div>
                 </div>
             )}
+
+            {/*{Stock Update Modal}*/}
+            {stockUpdateModal && (
+                <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
+                    <div className="bg-white rounded-lg p-8 w-3/4 max-w-4xl mx-auto">
+                        <h2 className="text-black text-2xl font-bold mb-4">Stock Update</h2>
+                        <div className="mb-4">
+                            <StockUpdate onExcelDataChange={handleStockChange} />
+                        </div>
+                        <div className="flex justify-between">
+                            <button
+                                onClick={() => setStockUpdateModal(false)}
+                                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                        {error && (
+                            <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4">
+                                {error.includes('successfully') ? (
+                                    <HiCheckCircle className="h-6 w-6 mr-2 text-green-500" />
+                                ) : (
+                                    <HiXCircle className="h-6 w-6 mr-2 text-red-500" />
+                                )}
+                                <span>{error}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+                {/*{Items Modal}*/}
+            {itemsModal && (
+                <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
+                    <div className="bg-white rounded-lg p-8 w-1/2">
+                        <h2 className="text-black text-2xl font-bold mb-4">Items</h2>
+                        <div className="mb-4">
+                            <UploadItems onExcelDataChange={handleItemsChange} />
+                        </div>
+                        <div className="flex justify-between">
+                            <button
+                                onClick={() => setItemsModal(false)}
+                                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                        {error && (
+                            <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4">
+                                {error.includes('successfully') ? (
+                                    <HiCheckCircle className="h-6 w-6 mr-2 text-green-500" />
+                                ) : (
+                                    <HiXCircle className="h-6 w-6 mr-2 text-red-500" />
+                                )}
+                                <span>{error}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
