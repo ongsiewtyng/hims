@@ -6,7 +6,7 @@ import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/
 import '../components/loader.css';
 
 type UploadItemsProps = {
-    onExcelDataChange: (sectionA: any[], header: string[], data: any[], extractedValues: any[], downloadURL: string) => void;
+    onExcelDataChange: (allVendorsData: any) => void;
 };
 
 const UploadItems: React.FC<UploadItemsProps> = ({ onExcelDataChange }) => {
@@ -118,42 +118,31 @@ const UploadItems: React.FC<UploadItemsProps> = ({ onExcelDataChange }) => {
                         if (getData) {
                             const data = new Uint8Array(getData);
                             const wb = XLSX.read(data, { type: 'array' });
-                            const ws_name = wb.SheetNames[0];
-                            const ws = wb.Sheets[ws_name];
-                            const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-                            console.log('JSON Data:', jsonData); // Log the JSON data
-                            const sectionA = jsonData.slice(5, 11);
-                            const result = {};  // Create an empty object to store the key-value pairs
-                            sectionA.forEach((row) => {
-                                const header = row[0].replace(':', '').trim();
-                                const value = row[row.length - 1];
-                                result[header] = value;
-                            });
 
-                            // Collect only the values into an array
-                            const extractedValues = Object.values(result).map(value => String(value));
+                            const allVendorsData = {};
 
-                            const headerRow = jsonData[13];
-                            const dataRows = jsonData.slice(14).map(row => {
-                                let rowData = {};
-                                headerRow.forEach((header, index) => {
-                                    rowData[header] = row[index];
+                            wb.SheetNames.forEach((sheetName) => {
+                                const ws = wb.Sheets[sheetName];
+                                const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+
+                                const headerRow = jsonData[0];
+                                const dataRows = jsonData.slice(1).map(row => {
+                                    let rowData = {};
+                                    headerRow.forEach((header, index) => {
+                                        rowData[header] = row[index];
+                                    });
+                                    return rowData;
                                 });
-                                return rowData;
+
+                                allVendorsData[sheetName] = {
+                                    header: headerRow,
+                                    data: dataRows,
+                                };
                             });
 
-                            console.log('Section A:', sectionA);
-                            console.log('Original Result:', result);
-                            console.log('Extracted Values:', extractedValues);
-                            console.log('Header:', headerRow); // Log the header row
-                            console.log('Data Rows:', dataRows); // Log the data rows
-                            console.log('Download URL:', downloadURL);
+                            console.log('All Vendors Data:', allVendorsData);
 
-                            setSectionA(sectionA);
-                            setHeader(headerRow);
-                            setData(dataRows);
-                            setDownloadLink(downloadURL);
-                            onExcelDataChange(sectionA, headerRow, dataRows, extractedValues, downloadURL);
+                            onExcelDataChange(allVendorsData);
                         }
                     }
                 };
@@ -173,7 +162,7 @@ const UploadItems: React.FC<UploadItemsProps> = ({ onExcelDataChange }) => {
             {/* Form */}
             {isFormVisible && (
                 <form
-                    className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col max-w-xl w-full relative mx-auto"
+                    className="bg-white p-8 rounded-2xl shadow flex flex-col max-w-xl w-full relative mx-auto"
                     onSubmit={handleSubmit}
                     onReset={handleReset}
                 >
