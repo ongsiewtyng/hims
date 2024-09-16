@@ -1,17 +1,21 @@
-'use client'
-import React, {useEffect, useState} from 'react';
+"use client";
+import React, { useState, useEffect } from 'react';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import * as XLSX from 'xlsx';
+import {usePDFJS} from "../hooks/usePDFJS";
 import { HiOutlineDocumentAdd } from "react-icons/hi";
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import '../components/loader.css';
+import * as pdfjsLib from 'pdfjs-dist';
+import Tesseract from 'tesseract.js';
+
 
 type StockUpdateProps = {
-    onExcelDataChange: (sectionA: any[], header: string[], data: any[], extractedValues: any[], downloadURL: string) => void;
-};
+    onPDFDataChange: (
+        extractedValues: { itemNo: number; description: string; quantity: number }[]
+    ) => void;
+}
 
-const StockUpdate: React.FC<StockUpdateProps> = ({ onExcelDataChange }) => {
+const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
     const [message, setMessage] = useState('No Files Selected');
-    //const [excelData, setExcelData] = useState<any[]>([]);
     const [isFormVisible, setIsFormVisible] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
     const [previousExcelData, setPreviousExcelData] = useState<any[]>([]);
@@ -20,7 +24,20 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onExcelDataChange }) => {
     const [sectionA, setSectionA] = useState<any[]>([]);
     const [downloadLink, setDownloadLink] = useState<string | null>(null);
 
-
+    // Hook to handle PDF processing
+    usePDFJS(async (pdfjs) => {
+        if (downloadLink) {
+            const loadingTask = pdfjs.getDocument(downloadLink);
+            const pdf = await loadingTask.promise;
+            const numPages = pdf.numPages;
+            console.log('Number of pages:', numPages);
+            for (let i = 1; i <= numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                console.log('Page text content:', textContent);
+            }
+        }
+    }, [downloadLink]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files ? e.target.files[0] : null;
@@ -60,40 +77,25 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onExcelDataChange }) => {
         const file = uploadFileElement.files ? uploadFileElement.files[0] : null;
         if (file) {
             setIsUploading(true); // Show loader
-            // Create a storage reference
             const storage = getStorage();
             const storageRef = ref(storage, 'uploads/' + file.name);
 
-            // Upload the file
             const uploadTask = uploadBytesResumable(storageRef, file);
-
-            // Get the download URL and read the file content
-            uploadTask.on('state_changed',
+            uploadTask.on(
+                'state_changed',
                 (snapshot) => {
-                    // Handle progress
                     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
                     console.log('Upload is ' + progress + '% done');
-                    switch (snapshot.state) {
-                        case 'paused':
-                            console.log('Upload is paused');
-                            break;
-                        case 'running':
-                            console.log('Upload is running');
-                            break;
-                    }
                 },
                 (error) => {
-                    // Handle error
                     console.error('Upload error:', error);
                 },
                 () => {
-                    // Handle successful upload
                     getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
                         console.log('File available at', downloadURL);
-                        fetchAndReadFile(downloadURL);
+                        fetchAndReadPDFFile(downloadURL);
                         setIsFormVisible(false);
                         setIsUploading(false); // Hide loader
-
                     });
                 }
             );
@@ -102,71 +104,142 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onExcelDataChange }) => {
         }
     };
 
-    const fetchAndReadFile = (downloadURL: string) => {
-        fetch(downloadURL)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.blob();
-            })
-            .then(blob => {
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    if (evt.target) {
-                        const getData = evt.target.result as ArrayBuffer;
-                        if (getData) {
-                            const data = new Uint8Array(getData);
-                            const wb = XLSX.read(data, { type: 'array' });
-                            const ws_name = wb.SheetNames[0];
-                            const ws = wb.Sheets[ws_name];
-                            const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-                            console.log('JSON Data:', jsonData); // Log the JSON data
-                            const sectionA = jsonData.slice(5, 11);
-                            const result = {};  // Create an empty object to store the key-value pairs
-                            sectionA.forEach((row) => {
-                                const header = row[0].replace(':', '').trim();
-                                const value = row[row.length - 1];
-                                result[header] = value;
-                            });
 
-                            // Collect only the values into an array
-                            const extractedValues = Object.values(result).map(value => String(value));
+    const fetchAndReadPDFFile = async (downloadURL: string) => {
+        try {
+            // Fetch the PDF file from the download URL
+            const response = await fetch(downloadURL);
+            if (!response.ok) throw new Error('Network response was not ok');
 
-                            const headerRow = jsonData[13];
-                            const dataRows = jsonData.slice(14).map(row => {
-                                let rowData = {};
-                                headerRow.forEach((header, index) => {
-                                    rowData[header] = row[index];
-                                });
-                                return rowData;
-                            });
+            // Convert the response to an ArrayBuffer
+            const arrayBuffer = await response.arrayBuffer();
 
-                            console.log('Section A:', sectionA);
-                            console.log('Original Result:', result);
-                            console.log('Extracted Values:', extractedValues);
-                            console.log('Header:', headerRow); // Log the header row
-                            console.log('Data Rows:', dataRows); // Log the data rows
-                            console.log('Download URL:', downloadURL);
+            // Load the PDF document
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const numPages = pdf.numPages;
 
-                            setSectionA(sectionA);
-                            setHeader(headerRow);
-                            setData(dataRows);
-                            setDownloadLink(downloadURL);
-                            onExcelDataChange(sectionA, headerRow, dataRows, extractedValues, downloadURL);
+            let textContent: string[] = [];
+
+            // Helper function to handle OCR on a canvas blob
+            const performOCR = (blob: Blob): Promise<string> => {
+                return new Promise((resolve, reject) => {
+                    if (!blob) reject('Blob is empty');
+
+                    // Perform OCR using Tesseract.js
+                    Tesseract.recognize(
+                        blob,
+                        'eng', // Language
+                        { logger: info => console.log(info) } // Optional logger
+                    )
+                        .then(({ data: { text } }) => resolve(text))
+                        .catch(err => reject(err));
+                });
+            };
+
+            // Process each page
+            for (let i = 1; i <= numPages; i++) {
+                const page = await pdf.getPage(i);
+
+                // Render page to canvas
+                const viewport = page.getViewport({ scale: 1.5 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                if (!context) throw new Error('Failed to get canvas context');
+
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({ canvasContext: context, viewport }).promise;
+
+                // Convert canvas to Blob and perform OCR
+                const ocrText = await new Promise<string>((resolve, reject) => {
+                    canvas.toBlob(async (blob) => {
+                        if (blob) {
+                            try {
+                                const text = await performOCR(blob);
+                                resolve(text);
+                            } catch (error) {
+                                reject(error);
+                            }
+                        } else {
+                            reject('Failed to convert canvas to Blob');
                         }
-                    }
-                };
-                reader.readAsArrayBuffer(blob);
-            })
-            .catch(error => console.error('Fetch error:', error));
+                    });
+                });
+
+                textContent.push(ocrText);
+            }
+
+            // Join all page texts for overall content
+            const fullText = textContent.join('\n');
+            console.log('OCR text content:', fullText);
+
+            // Extract specific information: No, Item, and Quantity
+            const extractedData = extractItemData(fullText);
+            console.log('Extracted Data:', extractedData);
+            onPDFDataChange(extractedData.items);
+
+
+        } catch (error) {
+            console.error('PDF processing error:', error);
+        }
     };
 
+    // Function to extract item descriptions and quantities
+    const extractItemData = (text: string) => {
+        const lines = text.split('\n');
+        const itemData = [];
+        let totalQuantity = 0;
+        let itemNo = 1;
+
+        // Regex to match item lines
+        const itemRegex = /^\s*(\d+)\s+([\w\s\/().,-]+?)\s+(\d+)\s*(KG|GM|PC|BTL|L)?$/i;
+
+        lines.forEach(line => {
+            const match = line.match(itemRegex);
+            if (match) {
+                const [, , description, quantity, , unit] = match;
+                const quantityNum = parseFloat(quantity.replace(',', '')); // Remove any commas from quantity
+
+                // Clean the description by trimming off extra details
+                const cleanedDescription = description.replace(/(\d+)\s*([KG|GM|PC|BTL|L])/gi, '').trim(); // Remove any units or numbers after description
+                totalQuantity += quantityNum;
+
+                itemData.push({
+                    itemNo: itemNo++,
+                    description: cleanedDescription, // Only the cleaned description
+                    quantity: quantityNum,
+                    unit: unit ? unit.trim(): 'PC'
+                });
+            } else {
+                // Handle lines that might not match the expected format
+                const parts = line.split(/(\d+)/).filter(Boolean);
+                if (parts.length >= 2) {
+                    const quantity = parseFloat(parts[0].replace(',', '')); // First part as quantity
+                    const description = parts.slice(1).join(' ').trim(); // Rest as description
+
+                    itemData.push({
+                        itemNo: itemNo++,
+                        description: description.replace(/(\d+)\s*(KG|GM|PC|BTL|L)/gi, '').trim(), // Clean the description
+                        quantity: quantity,
+                        unit: null
+                    });
+                    totalQuantity += quantity;
+                }
+            }
+        });
+
+        return { items: itemData, totalQuantity };
+    };
+
+
+    // Hook to detect changes in data for comparison
     useEffect(() => {
         if (JSON.stringify(data) !== JSON.stringify(previousExcelData)) {
             setPreviousExcelData(data);
         }
     }, [data, previousExcelData]);
+
 
     return (
         <div className="relative flex flex-col max-w-xl w-full mt-4 mx-auto">
@@ -223,4 +296,3 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onExcelDataChange }) => {
 }
 
 export default StockUpdate;
-

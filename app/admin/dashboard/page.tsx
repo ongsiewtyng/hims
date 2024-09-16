@@ -16,7 +16,7 @@ import {
 import "../styles/Homebuttons.css";
 import "../styles/Homebuttons2.css";
 import "../styles/Homebuttons3.css";
-import StockUpdate from "../../components/StockUpdate";
+import StockUpdateModal from "../../components/StockUpdateModal";
 import UploadItemsModal from "../../components/UploadItemsModal";
 import AddNEditVendorModal from "../../components/AddNEditVendorModal";
 
@@ -50,8 +50,8 @@ export default function Dashboard() {
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [vendorId, setVendorId] = useState<string | null>(null);
     const [archiveDataModal, setArchiveDataModal] = useState(false);
-    const [stockUpdateModal, setStockUpdateModal] = useState(false);
     const [isUploadItemsModal, setIsUploadItemsModal] = useState(false);
+    const [isStockUpdateModal, setIsStockUpdateModal] = useState(false);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [foodItems, setFoodItems] = useState<FoodItems[]>([]);
     const [activeVendor, setActiveVendor] = useState<string | null>(null);
@@ -261,14 +261,9 @@ export default function Dashboard() {
     }, {} as Record<string, FoodItems[]>);
 
 
-    const handleStockChange = (header: string[], data: any[], extractedValues: any[]) => {
-        setHeaders(header);
-        setUploadedData({header, data});
-        setExtractedValues(extractedValues);
-
-
-        setShowExcelData(true); // Show Excel data when data is available
-    };
+    const handleOpenStockUpdateModal = () => {
+        setIsStockUpdateModal(true);
+    }
 
     // Function to handle opening the upload items modal
     const handleOpenUploadItemsModal = () => {
@@ -334,11 +329,18 @@ export default function Dashboard() {
                             {/* Right Aligned Buttons */}
                             <div className="flex space-x-4">
                                 <button
-                                    onClick={() => setStockUpdateModal(true)}
+                                    onClick={handleOpenStockUpdateModal}
                                     className="custom-button2"
                                 >
                                     <HiOutlineTruck size={20}/>
                                 </button>
+                                {/* Stock Update Modal */}
+                                {isStockUpdateModal && (
+                                    <StockUpdateModal
+                                        stockUpdateModal={isStockUpdateModal}
+                                        setStockUpdateModal={setIsStockUpdateModal}
+                                    />
+                                )}
 
                                 <button
                                     onClick={handleOpenUploadItemsModal}

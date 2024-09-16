@@ -203,7 +203,7 @@ const UploadItemsModal: React.FC<UploadItemsModalProps> = ({ uploadItemsModal, s
         uploadItemsModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
                 <div className="bg-white rounded-lg p-8 w-3/4 max-w-4xl mx-auto relative z-50 text-black">
-                    <h2 className="text-black text-2xl font-bold mb-4">Stock Update</h2>
+                    <h2 className="text-black text-2xl font-bold mb-4">Import Items</h2>
 
                     {/* Container for scrollable content */}
                     <div className="max-h-[70vh] overflow-y-auto">
