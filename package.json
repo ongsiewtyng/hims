@@ -17,6 +17,7 @@
     "firebase": "^10.11.0",
     "firebase-admin": "^11.11.1",
     "firebase-functions": "^5.0.1",
+    "flipdown": "^0.3.2",
     "jsonwebtoken": "^9.0.2",
     "next": "14.2.1",
     "nodemailer": "^6.9.14",

@@ -1,0 +1,75 @@
+.flip-clock {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 1rem; /* Font size for the entire clock */
+    color: #fff;
+    perspective: 1000px; /* Add perspective for 3D effect */
+}
+
+.flip-clock.submittable .flip-unit span {
+    background-color: #28a745; /* Green for submittable */
+}
+
+.flip-clock.not-submittable .flip-unit span {
+    background-color: #dc3545; /* Red for not submittable */
+}
+
+.flip-unit-container {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.flip-unit {
+    position: relative;
+    width: 40px; /* Adjusted width */
+    height: 60px; /* Adjusted height */
+}
+
+.flip-inner {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d; /* Preserve 3D transformations */
+    transform: rotateX(0deg); /* Initial rotation */
+    transition: transform 0.6s ease; /* Smooth transition */
+}
+
+.flip-top, .flip-bottom {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden; /* Hide the back face during the flip */
+    border-radius: 0.5rem; /* Rounded corners */
+    font-size: 1rem; /* Font size for the numbers */
+    line-height: 44px; /* Centering text vertically */
+    text-align: center;
+    color: #fff;
+}
+
+.flip-top {
+    margin-top: 50%;
+    height: 70%;
+    background-color: #333;
+}
+
+.flip-bottom {
+    background-color: #333;
+    transform: rotateX(180deg); /* Initially rotated */
+}
+
+.flip-separator {
+    font-size: 1rem; /* Font size for separators */
+    line-height: 80px; /* Centering separator vertically */
+    padding: 0 0.25rem;
+    color: #999;
+}
+
+/* Animation and flip effect */
+.flip-unit.flip .flip-inner {
+    transform: rotateX(-180deg); /* Rotate the inner container to flip */
+}
+
+.flip-unit:nth-child(1) { animation-delay: 0s; }
+.flip-unit:nth-child(2) { animation-delay: 0.1s; }
+.flip-unit:nth-child(3) { animation-delay: 0.2s; }
+.flip-unit:nth-child(4) { animation-delay: 0.3s; }

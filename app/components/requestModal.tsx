@@ -1,9 +1,7 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import "../admin/styles/blink.css";
-import {ref, onValue} from "@firebase/database";
-import {update} from "firebase/database";
+import {ref, update} from "@firebase/database";
 import {database} from "../services/firebase";
-import VendorSelection from "../components/VendorSelection";
 import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
 
 interface RequestModalProps {
@@ -33,8 +31,6 @@ const BlinkingStatusIndicator = ({ status }: { status: string }) => {
         'Request Successfully': '#22c55e', // Light Green
     };
 
-    //console.log(status);
-
     const color = statusColors[status] || '#d1d5db'; // Default to gray if status not found
 
     return (
@@ -55,25 +51,9 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
     const [rejectionType, setRejectionType] = useState<'Needs Editing' | 'Admin Disapproved'>('Admin Disapproved');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedFileUrl, setSelectedFileUrl] = useState(''); // URL of the file to send
-    //const [vendors, setVendors] = useState<Vendor[]>([]); // List of vendors
     const [isUpdating, setIsUpdating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
-
-    // useEffect(() => {
-    //     const vendorsRef = ref(database, 'vendors');
-    //     onValue(vendorsRef, (snapshot) => {
-    //         const data = snapshot.val();
-    //         if (data) {
-    //             const vendorList = Object.keys(data).map(key => ({
-    //                 id: key,
-    //                 name: data[key].name,
-    //                 email: data[key].email,
-    //             }));
-    //             setVendors(vendorList);
-    //         }
-    //     });
-    // }, []);
 
 
     const toTitleCase = (str : any) => {
@@ -118,30 +98,6 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
         setIsModalOpen(true);
         updateStatus('Admin Approved');
     };
-
-    // const handleSendEmail = async (vendor: Vendor) => {
-    //     try {
-    //         const response = await fetch('/api/sendEmail', {
-    //             method: 'POST',
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //             },
-    //             body: JSON.stringify({
-    //                 recipient: vendor.email,
-    //                 fileUrl: selectedFileUrl,
-    //             }),
-    //         });
-    //
-    //         if (response.ok) {
-    //             alert('Email sent successfully');
-    //         } else {
-    //             alert('Failed to send email');
-    //         }
-    //     } catch (error) {
-    //         console.error('Error sending email:', error);
-    //         alert('Error sending email');
-    //     }
-    // };
 
     const handleRejectWithRemark = () => {
         const statusToUpdate = rejectionType;
@@ -251,35 +207,52 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                     </div>
                 </div>
 
-                {/* Approve and Reject Buttons */}
+                {/* Approve and Reject Buttons based on status */}
                 <div className="flex justify-end space-x-4">
-                    <button
-                        onClick={handleApprove}
-                        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                    >
-                        Approve
-                    </button>
-                    {/*<VendorSelection*/}
-                    {/*    isOpen={isModalOpen}*/}
-                    {/*    onClose={() => setIsModalOpen(false)}*/}
-                    {/*    fileUrl={selectedFileUrl}*/}
-                    {/*    onSendEmail={handleSendEmail}*/}
-                    {/*    vendors={vendors}*/}
-                    {/*/>*/}
-                    <button
-                        onClick={() => setShowRejectModal(true)}
-                        className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                    >
-                        Reject
-                    </button>
-                </div>
+                    {request?.status === 'Admin Disapproved' && (
+                        <button
+                            onClick={handleApprove}
+                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                        >
+                            Approve
+                        </button>
+                    )}
 
-                <button
-                    onClick={onClose}
-                    className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                >
-                    Close
-                </button>
+                    {request?.status === 'Needs Editing' && (
+                        <>
+                            <button
+                                onClick={handleApprove}
+                                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                            >
+                                Approve
+                            </button>
+                            <button
+                                onClick={() => setShowRejectModal(true)}
+                                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                            >
+                                Reject
+                            </button>
+                        </>
+                    )}
+
+                    {request?.status === 'Admin Approved' && (
+                        <button
+                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                            onClick={onClose}
+                        >
+                            Close
+                        </button>
+                    )}
+
+                    {request?.status === 'Send to Vendor' && (
+                        <button
+                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                            onClick={onClose}
+                        >
+                            Close
+                        </button>
+                    )}
+                </div>
 
                 {/* Reject Modal for Adding Remarks */}
                 {showRejectModal && (
