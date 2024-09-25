@@ -3,7 +3,7 @@ import RequestForm from '../../components/RequestForm';
 import SidenavLecturer from "../../components/SidenavLecturer";
 import {useEffect, useState} from "react";
 import {database} from "../../services/firebase";
-import {push, ref, set} from "@firebase/database";
+import {push, ref, set, onValue} from "@firebase/database";
 import {getAuth} from "firebase/auth";
 import { HiOutlinePencil } from "react-icons/hi";
 import "../../lecturer/request-form/flipClock.css"
@@ -17,7 +17,7 @@ type Countdown = {
     seconds: string;
 };
 
-export default function ItemRequest() {
+export default function LecturerItemRequest() {
     const [isSidenavOpen, setIsSidenavOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false); // State for edit mode
     const [formKey, setFormKey] = useState(0); // Key to control Page remount
@@ -30,6 +30,8 @@ export default function ItemRequest() {
     const [sectionAHeaders, setSectionAHeaders] = useState<string[]>([]);
     const [downloadURL, setDownloadURL] = useState<string>('');
     const [isSubmittable, setIsSubmittable] = useState(false);
+    const [isCountdownEnabled, setIsCountdownEnabled] = useState(false);
+
 
     // Define the countdown state as an object with `days`, `hours`, `minutes`, and `seconds`
     const [countdown, setCountdown] = useState<Countdown>({
@@ -39,18 +41,37 @@ export default function ItemRequest() {
         seconds: "00"
     });
 
-    // Helper function to calculate the remaining time until the next Monday
+    useEffect(() => {
+        const countdownRef = ref(database, 'settings/countdownEnabled');
+        onValue(countdownRef, (snapshot) => {
+            const enabled = snapshot.val();
+            setIsCountdownEnabled(enabled); // Update local state based on Firebase value
+        });
+    }, []);
+
+    // Helper function to calculate the remaining time until the next Monday at 6 PM
     const calculateTimeUntilNextMonday = () => {
         const now = new Date();
         const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
         const daysUntilNextMonday = (1 - dayOfWeek + 7) % 7 || 7; // How many days until next Monday
         const nextMonday = new Date(now);
         nextMonday.setDate(now.getDate() + daysUntilNextMonday);
-        nextMonday.setHours(0, 0, 0, 0); // Reset to midnight
+        nextMonday.setHours(18, 0, 0, 0); // Set to 6 PM
 
         return nextMonday.getTime() - now.getTime(); // Time difference in milliseconds
     };
 
+    // Helper function to calculate the remaining time until the next Monday
+    const calculateTimeUntilNextWednesday = () => {
+        const now = new Date();
+        const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        const daysUntilNextWednesday = (3 - dayOfWeek + 7) % 7 || 7; // How many days until next Wednesday
+        const nextWednesday = new Date(now);
+        nextWednesday.setDate(now.getDate() + daysUntilNextWednesday);
+        nextWednesday.setHours(18, 0, 0, 0); // Set to 6 PM
+
+        return nextWednesday.getTime() - now.getTime(); // Time difference in milliseconds
+    };
 
     const handleExcelDataChange = (sectionA: any[], header: string[], data: any[], extractedValues: any[], downloadURL: string) => {
         setSectionA(sectionA);
@@ -95,27 +116,31 @@ export default function ItemRequest() {
     };
 
     useEffect(() => {
-        const updateCountdown = () => {
-            const timeUntilNextMonday = calculateTimeUntilNextMonday();
-            const formattedTime = formatTime(timeUntilNextMonday);
-            setCountdown(formattedTime);
-
+        if (!isCountdownEnabled) {
+            setIsSubmittable(true); // If countdown is disabled, always allow submission
+            return;
+        }
+        const checkSubmittable = () => {
             const now = new Date();
-            const day = now.getDay(); // Day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
-            const hour = now.getHours(); // Current hour
+            const day = now.getDay();
+            const hour = now.getHours();
 
-            // Submittable if it's Monday to Friday before 6 PM (18:00)
-            const isWithinWeek = day >= 1 && day <= 5; // Monday to Friday
-            const isBefore6PM = day < 5 || (day === 5 && hour < 18); // Before 6 PM on Friday
+            const isWithinWeek = day >= 1 && day <= 3; // Monday to Wednesday
+            const isBefore6PM = day < 3 || (day === 3 && hour < 18); // Before 6 PM on Wednesday
+
             setIsSubmittable(isWithinWeek && isBefore6PM);
+
+            // Calculate the remaining time based on the countdown state
+            const timeUntilNext = isCountdownEnabled ? calculateTimeUntilNextWednesday() : calculateTimeUntilNextMonday();
+            setCountdown(formatTime(timeUntilNext));
         };
 
-        updateCountdown(); // Run it initially
+        checkSubmittable(); // Check initially
 
-        const intervalId = setInterval(updateCountdown, 1000); // Update every second
+        const intervalId = setInterval(checkSubmittable, 1000); // Check every second
 
-        return () => clearInterval(intervalId); // Cleanup
-    }, []);
+        return () => clearInterval(intervalId); // Cleanup interval on unmount
+    }, [isCountdownEnabled]); // Re-run effect when countdown state changes
 
 
     const handleSubmit = async () => {
@@ -171,134 +196,166 @@ export default function ItemRequest() {
                     </div>
 
                     <div className="mt-4 text-center text-sm text-gray-700">
-                        <p>You can submit the form from Monday to Friday.</p>
-                        <p>Submission deadline: Friday, 6:00 PM</p>
+                        <p>You can submit the form from Monday to Wednesday.</p>
+                        <p>Submission deadline: Wednesday, 6:00 PM</p>
+                        <p className="mt-2">Time remaining:</p>
                     </div>
 
                     <div className={`flip-clock ${flipClockClass}`}>
-                        <div className="flip-unit-container">
+                        <div className={`flip-unit-container ${isSubmittable ? 'submittable' : 'not-submittable'}`}>
                             <div className="flip-unit">
                                 <span className="flip-top">{countdown.days}</span>
                                 <span className="flip-bottom">{countdown.days}</span>
                             </div>
-                            <div className="flip-separator">:</div>
+                            <span className="flip-label">days</span>
+                        </div>
+
+                        <div className="flip-separator">:</div>
+
+                        <div className={`flip-unit-container ${isSubmittable ? 'submittable' : 'not-submittable'}`}>
                             <div className="flip-unit">
                                 <span className="flip-top">{countdown.hours}</span>
                                 <span className="flip-bottom">{countdown.hours}</span>
                             </div>
-                            <div className="flip-separator">:</div>
+                            <span className="flip-label">hours</span>
+                        </div>
+
+                        <div className="flip-separator">:</div>
+
+                        <div className={`flip-unit-container ${isSubmittable ? 'submittable' : 'not-submittable'}`}>
                             <div className="flip-unit">
                                 <span className="flip-top">{countdown.minutes}</span>
                                 <span className="flip-bottom">{countdown.minutes}</span>
                             </div>
-                            <div className="flip-separator">:</div>
+                            <span className="flip-label">minutes</span>
+                        </div>
+
+                        <div className="flip-separator">:</div>
+
+                        <div className={`flip-unit-container ${isSubmittable ? 'submittable' : 'not-submittable'}`}>
                             <div className="flip-unit">
                                 <span className="flip-top">{countdown.seconds}</span>
                                 <span className="flip-bottom">{countdown.seconds}</span>
                             </div>
+                            <span className="flip-label">seconds</span>
                         </div>
                     </div>
 
-                    {/* Use formKey as the key for Page */}
-                    <RequestForm key={formKey} onExcelDataChange={handleExcelDataChange}/>
-                    {showExcelData && excelData.length > 0 && (
-                        <div className="bg-white p-8 rounded-2xl shadow-2xl w-full" style={{width: '90rem'}}>
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold mb-4 text-gray-700">Section A</h2>
-                                <button onClick={toggleEditMode}>
-                                    <HiOutlinePencil className="h-5 w-5 text-gray-500 mr-2"/>
-                                </button>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full bg-white shadow-md rounded-lg">
-                                    <thead className="bg-gray-100 border-b">
-                                    <tr>
-                                        {sectionAHeaders.length > 0 && sectionAHeaders.map((header, index) => (
-                                            <th
-                                                key={index}
-                                                className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-                                            >
-                                                {header}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr>
-                                        {extractedValues.length > 0 && extractedValues.map((value, index) => (
-                                            <td
-                                                key={index}
-                                                className="py-3 px-4 border-b text-sm text-gray-700"
-                                            >
-                                                {isEditMode ? (
-                                                    <input
-                                                        type="text"
-                                                        value={value}
-                                                        onChange={(e) => handleInputChange(index, e.target.value)}
-                                                        className="w-full px-2 py-1 border rounded"
-                                                    />
-                                                ) : (
-                                                    value
-                                                )}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div className="mt-8">
-                                <div className="flex justify-between items-center">
-                                    <h2 className="text-2xl font-bold mb-4 text-gray-700">Section B</h2>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full bg-white shadow-md rounded-lg">
-                                        <thead className="bg-gray-100 border-b">
-                                        <tr>
-                                            {headers.map((header, index) => (
-                                                <th
-                                                    key={index}
-                                                    className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-                                                >
-                                                    {header}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        {excelData.map((row, rowIndex) => (
-                                            <tr key={rowIndex} className="even:bg-gray-50">
-                                                {headers.map((header, colIndex) => (
+
+                    {/* Only render the RequestForm and form contents if submission is allowed */}
+                    {isSubmittable ? (
+                        <>
+                            {/* RequestForm is enabled */}
+                            <RequestForm key={formKey} onExcelDataChange={handleExcelDataChange} />
+
+                            {/* Excel data table with edit mode if allowed */}
+                            {showExcelData && excelData.length > 0 && (
+                                <div className="bg-white p-8 rounded-2xl shadow-2xl w-full" style={{width: '90rem'}}>
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-2xl font-bold mb-4 text-gray-700">Section A</h2>
+                                        <button onClick={toggleEditMode}>
+                                            <HiOutlinePencil className="h-5 w-5 text-gray-500 mr-2"/>
+                                        </button>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full bg-white shadow-md rounded-lg">
+                                            <thead className="bg-gray-100 border-b">
+                                            <tr>
+                                                {sectionAHeaders.map((header, index) => (
+                                                    <th
+                                                        key={index}
+                                                        className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+                                                    >
+                                                        {header}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <tr>
+                                                {extractedValues.map((value, index) => (
                                                     <td
-                                                        key={colIndex}
+                                                        key={index}
                                                         className="py-3 px-4 border-b text-sm text-gray-700"
                                                     >
                                                         {isEditMode ? (
                                                             <input
                                                                 type="text"
-                                                                value={row[header] || ''}
-                                                                onChange={(e) => handleExcelInputChange(rowIndex, header, e.target.value)}
+                                                                value={value}
+                                                                onChange={(e) => handleInputChange(index, e.target.value)}
                                                                 className="w-full px-2 py-1 border rounded"
                                                             />
                                                         ) : (
-                                                            row[header]
+                                                            value
                                                         )}
                                                     </td>
                                                 ))}
                                             </tr>
-                                        ))}
-                                        </tbody>
-                                    </table>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Section B */}
+                                    <div className="mt-8">
+                                        <div className="flex justify-between items-center">
+                                            <h2 className="text-2xl font-bold mb-4 text-gray-700">Section B</h2>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="min-w-full bg-white shadow-md rounded-lg">
+                                                <thead className="bg-gray-100 border-b">
+                                                <tr>
+                                                    {headers.map((header, index) => (
+                                                        <th
+                                                            key={index}
+                                                            className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+                                                        >
+                                                            {header}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {excelData.map((row, rowIndex) => (
+                                                    <tr key={rowIndex} className="even:bg-gray-50">
+                                                        {headers.map((header, colIndex) => (
+                                                            <td
+                                                                key={colIndex}
+                                                                className="py-3 px-4 border-b text-sm text-gray-700"
+                                                            >
+                                                                {isEditMode ? (
+                                                                    <input
+                                                                        type="text"
+                                                                        value={row[header] || ''}
+                                                                        onChange={(e) => handleExcelInputChange(rowIndex, header, e.target.value)}
+                                                                        className="w-full px-2 py-1 border rounded"
+                                                                    />
+                                                                ) : (
+                                                                    row[header]
+                                                                )}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-8 flex justify-end">
+                                        <button
+                                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+                                            onClick={handleSubmit}
+                                            disabled={!isSubmittable}
+                                        >
+                                            Submit
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="mt-8 flex justify-end">
-                                <button
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-                                    onClick={handleSubmit}
-                                    disabled={!isSubmittable}
-                                >
-                                    Submit
-                                </button>
-                            </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="text-gray-500 italic text-center py-8">
+                            Submission is currently closed. You can only submit from Monday to Wednesday before 6 PM.
                         </div>
                     )}
                 </div>
@@ -306,3 +363,4 @@ export default function ItemRequest() {
         </div>
     );
 }
+

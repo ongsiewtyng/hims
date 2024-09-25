@@ -1,8 +1,15 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import "../admin/styles/blink.css";
-import {ref, update} from "@firebase/database";
+import {ref, update, onValue} from "@firebase/database";
 import {database} from "../services/firebase";
 import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
+import VendorSelectionModal from "../components/VendorSelection";
+
+interface Vendor {
+    id: string;
+    name: string;
+    email: string;
+}
 
 interface RequestModalProps {
     isOpen: boolean;
@@ -54,6 +61,40 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
     const [isUpdating, setIsUpdating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [showVendorModal, setShowVendorModal] = useState(false);
+    const [vendors, setVendors] = useState<Vendor[]>([]);
+    const [status, setStatus] = useState<string>(request?.status || 'Unknown');
+
+    useEffect(() => {
+        const getVendors = ref(database, 'vendors');
+        onValue (getVendors, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const vendorsList = Object.keys(data).map((key) => ({
+                    id: key,
+                    name: data[key].name,
+                    email: data[key].email,
+                }));
+                setVendors(vendorsList);
+            }
+        });
+    }, []);
+
+    useEffect(() => {
+        if (request && request.requestId) {
+            const requestRef = ref(database, `requests/${request.requestId}`);
+
+            const unsubscribe = onValue(requestRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    setStatus(data.status);
+                }
+            });
+
+            // Clean up the subscription when the component unmounts
+            return () => unsubscribe();
+        }
+    }, [request]);
 
 
     const toTitleCase = (str : any) => {
@@ -64,9 +105,11 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
             : str;
     };
 
-    const updateStatus = (status: string, remark = "") => {
+    const updateStatus = (status: string, remark = ""): Promise<void> => {
+    return new Promise((resolve, reject) => {
         if (!request || !request.requestId) {
             console.error("Invalid request data");
+            reject("Invalid request data");
             return;
         }
 
@@ -77,6 +120,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
         // Avoid re-triggering if status is the same
         if (request.status === status && remark === "") {
             console.log("Status is already the same, no update needed.");
+            resolve();
             return;
         }
 
@@ -86,17 +130,27 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
             remark: remark,
         }).then(() => {
             console.log("Status updated successfully");
-
+            resolve();
         }).catch((error) => {
             console.error("Error updating status:", error);
+            reject(error);
         });
-    };
+    });
+};
 
 
     const handleApprove = (fileUrl: string) => {
+
         setSelectedFileUrl(fileUrl);
         setIsModalOpen(true);
-        updateStatus('Admin Approved');
+        updateStatus('Admin Approved').then(() => {
+            setSuccess('Request Approved');
+            setTimeout(() => {
+                onClose();
+            }, 5000);
+        }).catch((error: any) => {
+            setError('Failed to approve request');
+        });
     };
 
     const handleRejectWithRemark = () => {
@@ -113,10 +167,20 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
         <div className="fixed inset-0 flex items-center justify-center z-50 text-black">
             <div className="bg-black bg-opacity-50 absolute inset-0" onClick={onClose}></div>
             <div className="bg-white p-6 rounded-lg shadow-lg z-10 w-full max-w-6xl mx-4 relative">
-                <div className="absolute top-4 right-4">
+                <div className="absolute top-4 right-4 flex items-center space-x-2">
                     {/* Blinking Status Indicator */}
-                    <BlinkingStatusIndicator status={request?.status || 'Unknown'} />
+                    <BlinkingStatusIndicator status={status}/>
+
+                    {/* Close button */}
+                    <button
+                        onClick={onClose}
+                        className="text-gray-700 hover:text-gray-900"
+                    >
+                        <HiXCircle className="h-6 w-6"/>
+                    </button>
+
                 </div>
+
                 <h2 className="text-2xl font-bold mb-6">Request Details</h2>
 
                 {/* Request Information */}
@@ -209,19 +273,19 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
 
                 {/* Approve and Reject Buttons based on status */}
                 <div className="flex justify-end space-x-4">
-                    {request?.status === 'Admin Disapproved' && (
+                    {status === 'Admin Disapproved' && (
                         <button
-                            onClick={handleApprove}
+                            onClick={() => handleApprove(selectedFileUrl)}
                             className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
                         >
                             Approve
                         </button>
                     )}
 
-                    {request?.status === 'Needs Editing' && (
+                    {status === 'Needs Editing' && (
                         <>
                             <button
-                                onClick={handleApprove}
+                                onClick={() => handleApprove(selectedFileUrl)}
                                 className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
                             >
                                 Approve
@@ -235,7 +299,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                         </>
                     )}
 
-                    {request?.status === 'Admin Approved' && (
+                    {status === 'Admin Approved' && (
                         <button
                             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
                             onClick={onClose}
@@ -244,7 +308,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                         </button>
                     )}
 
-                    {request?.status === 'Send to Vendor' && (
+                    {status === 'Send to Vendor' && (
                         <button
                             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
                             onClick={onClose}
@@ -313,10 +377,22 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                     </div>
                 )}
 
+
+                {/* Vendor Selection Modal */}
+                {showVendorModal && (
+                    <VendorSelectionModal
+                        isOpen={showVendorModal}
+                        onClose={() => setShowVendorModal(false)}
+                        fileUrl={selectedFileUrl}
+                        vendors={vendors}// Pass the list of vendors here
+                    />
+                )}
+
             </div>
             {/* Notification Bar */}
             {(error || success) && (
-                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4">
+                <div
+                    className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4">
                     {success ? (
                         <HiCheckCircle className="h-6 w-6 mr-2 text-green-500" />
                     ) : (

@@ -21,6 +21,7 @@
     "jsonwebtoken": "^9.0.2",
     "next": "14.2.1",
     "nodemailer": "^6.9.14",
+    "pdf-lib": "^1.17.1",
     "primeicons": "^7.0.0",
     "primereact": "^10.7.0",
     "react": "^18",
