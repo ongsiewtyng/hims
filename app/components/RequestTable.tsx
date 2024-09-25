@@ -47,6 +47,7 @@ const ProgressTracker = () => {
         'Admin Approved': '#10b981', // Green
         'Admin Disapproved': '#ef4444', // Red
         'Needs Editing': '#f97316', // Orange
+        'Edit Requested': '#f59e0b', // Yellow
         'Send to Vendor': '#3b82f6', // Blue
         'Quotation Received': '#9333ea', // Purple
         'Request Successfully': '#22c55e', // Light Green

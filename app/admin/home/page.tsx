@@ -267,6 +267,7 @@ export default function Home() {
         'admin approved': '#10b981', // Green
         'admin disapproved': '#ef4444', // Red
         'editing process': '#f97316', // Orange
+        'Edit Requested': '#f59e0b', // Yellow
         'send to vendor': '#3b82f6', // Blue
         'quotation received': '#9333ea', // Purple
         'request successfully': '#22c55e', // Light Green

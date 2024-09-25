@@ -131,7 +131,7 @@ export default function LecturerItemRequest() {
             setIsSubmittable(isWithinWeek && isBefore6PM);
 
             // Calculate the remaining time based on the countdown state
-            const timeUntilNext = isCountdownEnabled ? calculateTimeUntilNextWednesday() : calculateTimeUntilNextMonday();
+            const timeUntilNext = calculateTimeUntilNextMonday();
             setCountdown(formatTime(timeUntilNext));
         };
 

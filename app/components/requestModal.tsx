@@ -33,6 +33,7 @@ const BlinkingStatusIndicator = ({ status }: { status: string }) => {
         'Admin Approved': '#10b981', // Green
         'Admin Disapproved': '#ef4444', // Red
         'Needs Editing': '#f97316', // Orange
+        'Edit Requested': '#f59e0b', // Yellow
         'Send to Vendor': '#3b82f6', // Blue
         'Quotation Received': '#9333ea', // Purple
         'Request Successfully': '#22c55e', // Light Green
@@ -106,41 +107,53 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
     };
 
     const updateStatus = (status: string, remark = ""): Promise<void> => {
-    return new Promise((resolve, reject) => {
-        if (!request || !request.requestId) {
-            console.error("Invalid request data");
-            reject("Invalid request data");
-            return;
-        }
+        return new Promise((resolve, reject) => {
+            if (!request || !request.requestId) {
+                console.error("Invalid request data");
+                reject("Invalid request data");
+                return;
+            }
 
-        const requestRef = ref(database, `requests/${request.requestId}`);
+            const requestRef = ref(database, `requests/${request.requestId}`);
 
-        console.log("Updating status with:", { status, remark, requestId: request.requestId });
+            console.log("Updating status with:", { status, remark, requestId: request.requestId });
 
-        // Avoid re-triggering if status is the same
-        if (request.status === status && remark === "") {
-            console.log("Status is already the same, no update needed.");
-            resolve();
-            return;
-        }
+            // Avoid re-triggering if status is the same
+            if (request.status === status && remark === "") {
+                console.log("Status is already the same, no update needed.");
+                resolve();
+                return;
+            }
 
-        // Perform the update operation
-        update(requestRef, {
-            status: status,
-            remark: remark,
-        }).then(() => {
-            console.log("Status updated successfully");
-            resolve();
-        }).catch((error) => {
-            console.error("Error updating status:", error);
-            reject(error);
+            // Perform the update operation
+            update(requestRef, {
+                status: status,
+                remark: remark,
+            }).then(() => {
+                console.log("Status updated successfully");
+                resolve();
+            }).catch((error) => {
+                console.error("Error updating status:", error);
+                reject(error);
+            });
         });
-    });
-};
+    };
+
+    const approvedEdit = (fileUrl: string) => {
+        setSelectedFileUrl(fileUrl);
+        setIsModalOpen(true);
+        updateStatus('Needs Editing').then(() => {
+            setSuccess('Request Approved');
+            setTimeout(() => {
+                onClose();
+            }, 5000);
+        }).catch((error: any) => {
+            setError('Failed to approve request');
+        });
+    }
 
 
     const handleApprove = (fileUrl: string) => {
-
         setSelectedFileUrl(fileUrl);
         setIsModalOpen(true);
         updateStatus('Admin Approved').then(() => {
@@ -273,16 +286,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
 
                 {/* Approve and Reject Buttons based on status */}
                 <div className="flex justify-end space-x-4">
-                    {status === 'Admin Disapproved' && (
-                        <button
-                            onClick={() => handleApprove(selectedFileUrl)}
-                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                        >
-                            Approve
-                        </button>
-                    )}
-
-                    {status === 'Needs Editing' && (
+                    {status === 'Pending' && (
                         <>
                             <button
                                 onClick={() => handleApprove(selectedFileUrl)}
@@ -297,6 +301,24 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                                 Reject
                             </button>
                         </>
+                    )}
+
+                    {status === 'Admin Disapproved' && (
+                        <button
+                            onClick={() => handleApprove(selectedFileUrl)}
+                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                        >
+                            Approve
+                        </button>
+                    )}
+
+                    {status === 'Needs Editing' && (
+                        <button
+                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                            onClick={onClose}
+                        >
+                            Close
+                        </button>
                     )}
 
                     {status === 'Admin Approved' && (
@@ -314,6 +336,15 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                             onClick={onClose}
                         >
                             Close
+                        </button>
+                    )}
+
+                    {status === 'Edit Requested' && (
+                        <button
+                            onClick={() => approvedEdit(selectedFileUrl)}
+                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                        >
+                            Approve
                         </button>
                     )}
                 </div>

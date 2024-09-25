@@ -8,6 +8,7 @@ interface Request {
     excelData?: any[];
     status: string;
     id: string;
+    toEdit?: boolean;
 }
 
 interface DetailsModalProps {
@@ -50,21 +51,59 @@ const DetailsModal: React.FC<DetailsModalProps> = ({ onClose, request }) => {
         });
     };
 
-    const handleSave = async () => {
+    const handleRequestToEdit = async () => {
         if (isSaving) return;
         setIsSaving(true);
 
         try {
             const requestRef = ref(database, `requests/${request.id}`);
             const updatedData = {
-                sectionA: sectionAData,
-                excelData: excelData,
-                status: 'Pending',
+                status: 'Edit Requested',
+                toEdit: true, // Create or update the `toEdit` field to `true`
             };
 
             await update(requestRef, updatedData);
+            alert("Request to edit submitted!");
+
+            setIsEditMode(false); // Disable edit mode after requesting edits
+            onClose(); // Close modal if desired
+        } catch (error) {
+            console.error("Error requesting edit:", error);
+            alert("Failed to request edit.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+
+        try {
+            const requestRef = ref(database, `requests/${request.id}`);
+
+            // Check if status is 'Needs Editing'
+            const newStatus = request.status === 'Needs Editing' ? 'Pending' : request.status;
+
+            // Update the edited data
+            const updatedData = {
+                sectionA: sectionAData,
+                excelData: excelData,
+                status: newStatus,
+                toEdit: false,
+            };
+
+            // If status is not 'Needs Editing', request to edit by setting toEdit to true
+            if (newStatus !== 'Pending' && request.status !== 'Needs Editing') {
+                updatedData.toEdit = true;
+            }
+
+            await update(requestRef, updatedData);
+
+            // Notify the user
             alert("Request updated successfully!");
 
+            // Exit edit mode and close the modal
             setIsEditMode(false);
             onClose(); // Close the modal after successful submission
         } catch (error) {
@@ -74,6 +113,7 @@ const DetailsModal: React.FC<DetailsModalProps> = ({ onClose, request }) => {
             setIsSaving(false);
         }
     };
+
 
     const handleClose = () => {
         console.log("Close button clicked");
@@ -88,14 +128,26 @@ const DetailsModal: React.FC<DetailsModalProps> = ({ onClose, request }) => {
                 </div>
 
                 <div className="flex justify-end mb-4">
-                    <button
-                        onClick={() => setIsEditMode(!isEditMode)}
-                        className="text-gray-600 hover:text-gray-900 flex items-center"
-                    >
-                        <HiOutlinePencil className="mr-2" />
-                        {isEditMode ? 'Disable Edit Mode' : 'Enable Edit Mode'}
-                    </button>
+                    {request.status !== 'Needs Editing' ? (
+                        <button
+                            onClick={handleRequestToEdit}
+                            className={`text-gray-600 flex items-center ${request.status === 'Edit Request' ? 'opacity-50 cursor-not-allowed' : 'hover:text-gray-900'}`}
+                            disabled={request.status === 'Edit Requested'} // Disable button if status is 'Edit Request'
+                        >
+                            <HiOutlinePencil className="mr-2"/>
+                            {request.status === 'Edit Requested' ? 'Request Submitted' : 'Request to Edit'}
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => setIsEditMode(!isEditMode)}
+                            className="text-gray-600 hover:text-gray-900 flex items-center"
+                        >
+                            <HiOutlinePencil className="mr-2"/>
+                            {isEditMode ? 'Disable Edit Mode' : 'Enable Edit Mode'}
+                        </button>
+                    )}
                 </div>
+
 
                 {/* Section A */}
                 <div className="mb-8">
@@ -202,7 +254,8 @@ const DetailsModal: React.FC<DetailsModalProps> = ({ onClose, request }) => {
                             {isSaving ? 'Saving...' : 'Save'}
                         </button>
                     )}
-                    <button onClick={handleClose} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 ml-2">
+                    <button onClick={handleClose}
+                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 ml-2">
                         Close
                     </button>
                 </div>

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { off, ref } from "@firebase/database";
+import { off, ref, onValue, set } from "@firebase/database";
 import { database } from "../services/firebase";
-import {onValue, set} from "firebase/database";
 import DetailsModal from "./DetailsModal";
 
 interface Request {
@@ -15,6 +14,7 @@ interface Request {
     id: string;
     sectionA: { [key: string]: string[] };
     excelData?: { [key: string]: string }[];
+    toEdit?: boolean;
 
 }
 
@@ -25,6 +25,7 @@ interface RequestData {
     status: string;
     downloadLink?: string;
     excelData?: { [key: string]: string }[];
+    toEdit?: boolean;
 }
 
 const ReqTable = ({ userID }) => {
@@ -54,6 +55,7 @@ const ReqTable = ({ userID }) => {
         'Admin Approved': '#10b981', // Green
         'Admin Disapproved': '#ef4444', // Red
         'Needs Editing': '#f97316', // Orange
+        'Edit Requested': '#f59e0b', // Yellow
         'Send to Vendor': '#3b82f6', // Blue
         'Quotation Received': '#9333ea', // Purple
         'Request Successfully': '#22c55e', // Light Green
@@ -116,10 +118,8 @@ const ReqTable = ({ userID }) => {
     }, [userID]);
 
     const handleRowClick = (request: Request) => {
-        if (request.status === 'Needs Editing') {
-            setSelectedRequest(request);
-            setIsModalOpen(true);
-        }
+        setSelectedRequest(request);
+        setIsModalOpen(true);
     };
 
     const closeModal = () => {
