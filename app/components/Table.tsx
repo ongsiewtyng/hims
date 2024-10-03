@@ -150,9 +150,9 @@ const Table: React.FC = () => {
 
     const filteredData = data.filter(item =>
         !item.archive &&
-        (item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.foodName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.unit.toLowerCase().includes(searchQuery.toLowerCase()))
+        (item.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.foodName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.unit?.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
     const combinedData = filteredVendors.length > 0
