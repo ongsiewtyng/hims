@@ -59,7 +59,6 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
     const [rejectionType, setRejectionType] = useState<'Needs Editing' | 'Admin Disapproved'>('Admin Disapproved');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedFileUrl, setSelectedFileUrl] = useState(''); // URL of the file to send
-    const [isUpdating, setIsUpdating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [showVendorModal, setShowVendorModal] = useState(false);
@@ -176,6 +175,18 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
         }, 5000);
     };
 
+    const excelDateToJSDate = (serial: number): string => {
+        const utc_days = Math.floor(serial - 25569); // Excel serial date starts from January 1, 1900
+        const utc_value = utc_days * 86400; // Convert days to seconds
+        const date_info = new Date(utc_value * 1000); // Convert seconds to milliseconds
+        const day = date_info.getUTCDate().toString().padStart(2, '0');
+        const month = (date_info.getUTCMonth() + 1).toString().padStart(2, '0'); // Months are 0-based in JS
+        const year = date_info.getUTCFullYear();
+        return `${day}/${month}/${year}`; // Return the date in dd/mm/yyyy format
+    };
+
+
+
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50 text-black">
             <div className="bg-black bg-opacity-50 absolute inset-0" onClick={onClose}></div>
@@ -222,14 +233,15 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                                             key={index}
                                             className="py-3 px-4 border-b text-sm text-gray-700"
                                         >
-                                            {data[5]}
+                                            {data[0] === "Delivery Date:"
+                                                ? excelDateToJSDate(data[5])  // Convert and format the delivery date
+                                                : data[5]} {/* For other fields, just display data[5] */}
                                         </td>
                                     ))}
                                 </tr>
                             ) : (
                                 <tr>
-                                    <td className="py-3 px-4 text-sm text-gray-700"
-                                        colSpan={request?.sectionA?.length}>
+                                    <td className="py-3 px-4 text-sm text-gray-700" colSpan={request?.sectionA?.length}>
                                         No Section A Data Available
                                     </td>
                                 </tr>

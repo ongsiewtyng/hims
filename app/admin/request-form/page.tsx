@@ -33,29 +33,11 @@ export default function AdminItemRequest() {
     // fields for form
     const [isSidenavOpen, setIsSidenavOpen] = useState(false);
 
-    const [sectionA, setSectionA] = useState<any[]>([]);
-    const [excelData, setExcelData] = useState<any[]>([]);
-    const [headers, setHeaders] = useState<string[]>([]);
-    const [extractedValues, setExtractedValues] = useState<string[]>([]);
-    const [sectionAHeaders, setSectionAHeaders] = useState<string[]>([]);
     const [requests, setRequests] = useState<Request[]>([]);
     const [showVendorModal, setShowVendorModal] = useState(false);
     const [selectedFileUrl, setSelectedFileUrl] = useState('');
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [isCountdownEnabled, setIsCountdownEnabled] = useState(false);
-
-
-    const handleExcelDataChange = (sectionA: any[], header: string[], data: any[], extractedValues: any[]) => {
-        setSectionA(sectionA);
-        setHeaders(header);
-        setExcelData(data);
-        setExtractedValues(extractedValues);
-
-        // Extract headers from sectionA
-        const sectionAHeaderList = sectionA.map(row => row[0].replace(':', '').trim());
-        setSectionAHeaders(sectionAHeaderList); // Update state with section A headers
-
-    };
 
 
     useEffect(() => {

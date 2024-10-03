@@ -5,9 +5,9 @@ import {useEffect, useState} from "react";
 import {database} from "../../services/firebase";
 import {push, ref, set, onValue} from "@firebase/database";
 import {getAuth} from "firebase/auth";
-import { HiOutlinePencil } from "react-icons/hi";
+import {HiChevronLeft, HiChevronRight, HiOutlinePencil} from "react-icons/hi";
 import "../../lecturer/request-form/flipClock.css"
-
+import ReactPaginate from 'react-paginate';
 
 // Define the type for the countdown state
 type Countdown = {
@@ -32,6 +32,18 @@ export default function LecturerItemRequest() {
     const [isSubmittable, setIsSubmittable] = useState(false);
     const [isCountdownEnabled, setIsCountdownEnabled] = useState(false);
 
+    // Add state variables for pagination
+    const [currentPage, setCurrentPage] = useState(0);
+    const itemsPerPage = 10; // Number of items per page
+
+    // Handler for page change
+    const handlePageChange = (selectedItem: { selected: number }) => {
+        setCurrentPage(selectedItem.selected);
+    };
+
+    // Calculate the data to display on the current page
+    const offset = currentPage * itemsPerPage;
+    const currentData = excelData.slice(offset, offset + itemsPerPage);
 
     // Define the countdown state as an object with `days`, `hours`, `minutes`, and `seconds`
     const [countdown, setCountdown] = useState<Countdown>({
@@ -49,28 +61,24 @@ export default function LecturerItemRequest() {
         });
     }, []);
 
-    // Helper function to calculate the remaining time until the next Monday at 6 PM
-    const calculateTimeUntilNextMonday = () => {
-        const now = new Date();
-        const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-        const daysUntilNextMonday = (1 - dayOfWeek + 7) % 7 || 7; // How many days until next Monday
-        const nextMonday = new Date(now);
-        nextMonday.setDate(now.getDate() + daysUntilNextMonday);
-        nextMonday.setHours(18, 0, 0, 0); // Set to 6 PM
-
-        return nextMonday.getTime() - now.getTime(); // Time difference in milliseconds
-    };
-
-    // Helper function to calculate the remaining time until the next Monday
+    // Helper function to calculate time until Wednesday 6 PM
     const calculateTimeUntilNextWednesday = () => {
         const now = new Date();
-        const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-        const daysUntilNextWednesday = (3 - dayOfWeek + 7) % 7 || 7; // How many days until next Wednesday
         const nextWednesday = new Date(now);
-        nextWednesday.setDate(now.getDate() + daysUntilNextWednesday);
-        nextWednesday.setHours(18, 0, 0, 0); // Set to 6 PM
+        nextWednesday.setDate(now.getDate() + ((3 - now.getDay() + 7) % 7)); // Get the next Wednesday
+        nextWednesday.setHours(18, 0, 0, 0); // Set time to 6 PM
 
-        return nextWednesday.getTime() - now.getTime(); // Time difference in milliseconds
+        return nextWednesday - now;
+    };
+
+// Helper function to calculate time until next Monday 12 AM
+    const calculateTimeUntilNextMonday = () => {
+        const now = new Date();
+        const nextMonday = new Date(now);
+        nextMonday.setDate(now.getDate() + ((8 - now.getDay()) % 7)); // Get the next Monday
+        nextMonday.setHours(0, 0, 0, 0); // Set time to 12 AM
+
+        return nextMonday - now;
     };
 
     const handleExcelDataChange = (sectionA: any[], header: string[], data: any[], extractedValues: any[], downloadURL: string) => {
@@ -120,18 +128,26 @@ export default function LecturerItemRequest() {
             setIsSubmittable(true); // If countdown is disabled, always allow submission
             return;
         }
+
         const checkSubmittable = () => {
             const now = new Date();
             const day = now.getDay();
             const hour = now.getHours();
 
-            const isWithinWeek = day >= 1 && day <= 3; // Monday to Wednesday
-            const isBefore6PM = day < 3 || (day === 3 && hour < 18); // Before 6 PM on Wednesday
+            // Check if the current day is between Monday and Wednesday and before 6 PM
+            const isWithinWeek = (day >= 1 && day < 3) || (day === 3 && hour < 18); // Monday to Wednesday before 6 PM
 
-            setIsSubmittable(isWithinWeek && isBefore6PM);
+            setIsSubmittable(isWithinWeek);
 
-            // Calculate the remaining time based on the countdown state
-            const timeUntilNext = calculateTimeUntilNextMonday();
+            let timeUntilNext;
+
+            // If it's before Wednesday 6 PM, countdown to Wednesday; otherwise, countdown to next Monday
+            if (day < 3 || (day === 3 && hour < 18)) {
+                timeUntilNext = calculateTimeUntilNextWednesday(); // Before 6 PM on Wednesday
+            } else {
+                timeUntilNext = calculateTimeUntilNextMonday(); // After 6 PM on Wednesday
+            }
+
             setCountdown(formatTime(timeUntilNext));
         };
 
@@ -140,7 +156,7 @@ export default function LecturerItemRequest() {
         const intervalId = setInterval(checkSubmittable, 1000); // Check every second
 
         return () => clearInterval(intervalId); // Cleanup interval on unmount
-    }, [isCountdownEnabled]); // Re-run effect when countdown state changes
+    }, [isCountdownEnabled]);
 
 
     const handleSubmit = async () => {
@@ -315,7 +331,7 @@ export default function LecturerItemRequest() {
                                                 </tr>
                                                 </thead>
                                                 <tbody>
-                                                {excelData.map((row, rowIndex) => (
+                                                {currentData.map((row, rowIndex) => (
                                                     <tr key={rowIndex} className="even:bg-gray-50">
                                                         {headers.map((header, colIndex) => (
                                                             <td
@@ -339,6 +355,33 @@ export default function LecturerItemRequest() {
                                                 </tbody>
                                             </table>
                                         </div>
+                                    </div>
+
+                                    {/* Pagination Controls */}
+                                    <div className="mt-8 flex justify-center">
+                                        <ReactPaginate
+                                            previousLabel={
+                                                <div
+                                                    className="flex items-center cursor-pointer text-black">
+                                                    <HiChevronLeft className="w-5 h-5"/>
+                                                </div>
+                                            }
+                                            nextLabel={
+                                                <div
+                                                    className="flex items-center cursor-pointer text-black">
+                                                    <HiChevronRight className="w-5 h-5"/>
+                                                </div>
+                                            }
+                                            breakLabel={'...'}
+                                            breakClassName={'mx-2 text-gray-600'}
+                                            pageCount={Math.ceil(excelData.length / itemsPerPage)}
+                                            marginPagesDisplayed={2}
+                                            pageRangeDisplayed={5}
+                                            onPageChange={handlePageChange}
+                                            containerClassName={'flex space-x-2 items-center'} // Flex container for spacing
+                                            pageClassName={'cursor-pointer bg-blue-500 border border-gray-300 py-2 px-4 rounded'} // Page number styles
+                                            activeClassName={'bg-blue-600 text-white'} // Active page styles
+                                        />
                                     </div>
 
                                     <div className="mt-8 flex justify-end">
