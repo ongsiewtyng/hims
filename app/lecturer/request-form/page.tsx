@@ -23,27 +23,29 @@ export default function LecturerItemRequest() {
     const [formKey, setFormKey] = useState(0); // Key to control Page remount
     const [showExcelData, setShowExcelData] = useState(false);
 
+    // Store data per file
+    const [fileData, setFileData] = useState<any[]>([]); // Array for storing each file's data
+    const [currentFileIndex, setCurrentFileIndex] = useState(0); // Tracks the current file being displayed
+
     const [sectionA, setSectionA] = useState<any[]>([]);
     const [excelData, setExcelData] = useState<any[]>([]);
-    const [headers, setHeaders] = useState<string[]>([]);
-    const [extractedValues, setExtractedValues] = useState<string[]>([]);
-    const [sectionAHeaders, setSectionAHeaders] = useState<string[]>([]);
     const [downloadURL, setDownloadURL] = useState<string>('');
     const [isSubmittable, setIsSubmittable] = useState(false);
     const [isCountdownEnabled, setIsCountdownEnabled] = useState(false);
+    const [selectedWeeks, setSelectedWeeks] = useState<number[]>([]); // State for selected week
 
-    // Add state variables for pagination
-    const [currentPage, setCurrentPage] = useState(0);
-    const itemsPerPage = 10; // Number of items per page
-
-    // Handler for page change
-    const handlePageChange = (selectedItem: { selected: number }) => {
-        setCurrentPage(selectedItem.selected);
+    const handleWeekChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const newSelectedWeeks = [...selectedWeeks];
+        newSelectedWeeks[currentFileIndex] = Number(event.target.value);
+        setSelectedWeeks(newSelectedWeeks);
     };
 
-    // Calculate the data to display on the current page
-    const offset = currentPage * itemsPerPage;
-    const currentData = excelData.slice(offset, offset + itemsPerPage);
+    const handlePageChange = (selectedItem: { selected: number }) => {
+        setCurrentFileIndex(selectedItem.selected);
+    };
+
+    const currentData = fileData[currentFileIndex]?.data || [];
+    const pageCount = fileData.length;
 
     // Define the countdown state as an object with `days`, `hours`, `minutes`, and `seconds`
     const [countdown, setCountdown] = useState<Countdown>({
@@ -81,31 +83,37 @@ export default function LecturerItemRequest() {
         return nextMonday - now;
     };
 
+    // Handles new file data
     const handleExcelDataChange = (sectionA: any[], header: string[], data: any[], extractedValues: any[], downloadURL: string) => {
-        setSectionA(sectionA);
-        setHeaders(header);
-        setExcelData(data);
-        setExtractedValues(extractedValues);
-        setDownloadURL(downloadURL);
+        const newFileData = {
+            sectionA,
+            headers: header,
+            data,
+            extractedValues,
+            downloadURL
+        };
 
-        const sectionAHeaderList = sectionA.map(row => row[0].replace(':', '').trim());
-        setSectionAHeaders(sectionAHeaderList);
-
-        setShowExcelData(true); // Show Excel data when data is available
+        setFileData(prevData => [...prevData, newFileData]);  // Store each file's data separately
+        setCurrentFileIndex(fileData.length); // Switch to the newly added file
+        setShowExcelData(true);
     };
 
+    // Input change handlers remain the same
     const handleInputChange = (index: number, value: string) => {
-        const updatedValues = [...extractedValues];
+        const updatedValues = [...fileData[currentFileIndex].extractedValues];
         updatedValues[index] = value;
-        setExtractedValues(updatedValues);
+        const updatedFileData = [...fileData];
+        updatedFileData[currentFileIndex].extractedValues = updatedValues;
+        setFileData(updatedFileData);
     };
 
     const handleExcelInputChange = (rowIndex: number, colHeader: string, value: string) => {
-        const updatedData = [...excelData];
+        const updatedData = [...fileData[currentFileIndex].data];
         updatedData[rowIndex][colHeader] = value;
-        setExcelData(updatedData);
+        const updatedFileData = [...fileData];
+        updatedFileData[currentFileIndex].data = updatedData;
+        setFileData(updatedFileData);
     };
-
 
     // Format the time into days, hours, minutes, and seconds
     const formatTime = (timeInMilliseconds: number) => {
@@ -162,10 +170,6 @@ export default function LecturerItemRequest() {
     const handleSubmit = async () => {
         if (confirm('Do you want to submit the form?')) {
             try {
-                const sanitizedExcelData = excelData.map(row =>
-                    Object.fromEntries(Object.entries(row).map(([key, value]) => [key, value ?? '']))
-                );
-
                 const auth = getAuth();
                 const user = auth.currentUser;
                 const userID = user ? user.uid : null;
@@ -175,18 +179,25 @@ export default function LecturerItemRequest() {
                     return;
                 }
 
-                const newRequestRef = push(ref(database, 'requests'));
-                await set(newRequestRef, {
-                    sectionA,
-                    excelData: sanitizedExcelData,
-                    status: "Pending",
-                    dateCreated: new Date().toISOString(),
-                    downloadLink: downloadURL,
-                    userID: userID
-                });
+                for (let i = 0; i < fileData.length; i++) {
+                    const sanitizedExcelData = fileData[i].data.map((row: any) =>
+                        Object.fromEntries(Object.entries(row).map(([key, value]) => [key, value ?? '']))
+                    );
+
+                    const newRequestRef = push(ref(database, 'requests'));
+                    await set(newRequestRef, {
+                        sectionA: fileData[i].sectionA,
+                        excelData: sanitizedExcelData,
+                        status: "Pending",
+                        dateCreated: new Date().toISOString(),
+                        downloadLink: fileData[i].downloadURL,
+                        userID: userID,
+                        week: selectedWeeks[i] || 1 // Save the selected week for each file
+                    });
+                }
+
                 alert('Data submitted successfully.');
                 setShowExcelData(false);
-                // Change formKey to remount the Page component
                 setFormKey(prevKey => prevKey + 1);
 
             } catch (e) {
@@ -262,38 +273,52 @@ export default function LecturerItemRequest() {
                     {isSubmittable ? (
                         <>
                             {/* RequestForm is enabled */}
-                            <RequestForm key={formKey} onExcelDataChange={handleExcelDataChange} />
+                            <RequestForm key={formKey} onExcelDataChange={handleExcelDataChange}/>
 
-                            {/* Excel data table with edit mode if allowed */}
-                            {showExcelData && excelData.length > 0 && (
+                            {/* Excel data table */}
+                            {showExcelData && fileData.length > 0 && (
                                 <div className="bg-white p-8 rounded-2xl shadow-2xl w-full" style={{width: '90rem'}}>
                                     <div className="flex justify-between items-center">
                                         <h2 className="text-2xl font-bold mb-4 text-gray-700">Section A</h2>
-                                        <button onClick={toggleEditMode}>
-                                            <HiOutlinePencil className="h-5 w-5 text-gray-500 mr-2"/>
-                                        </button>
+                                        <div className="flex items-center">
+                                            <button
+                                                className="ml-4 text-gray-700 py-2 px-4 rounded flex items-center"
+                                                onClick={toggleEditMode}
+                                            >
+                                                <HiOutlinePencil className="w-5 h-5 mr-2"/>
+                                                {isEditMode ? 'Save Changes' : 'Edit Data'}
+                                            </button>
+                                            <select
+                                                value={selectedWeeks[currentFileIndex] || 1}
+                                                onChange={handleWeekChange}
+                                                className="text-black border border-gray-300 rounded-md p-2 ml-auto"
+                                            >
+                                                {Array.from({length: 14}, (_, i) => (
+                                                    <option key={i + 1} value={i + 1}>
+                                                        Week {i + 1}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
+                                    {/* Section A Table */}
                                     <div className="overflow-x-auto">
                                         <table className="min-w-full bg-white shadow-md rounded-lg">
                                             <thead className="bg-gray-100 border-b">
                                             <tr>
-                                                {sectionAHeaders.map((header, index) => (
-                                                    <th
-                                                        key={index}
-                                                        className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-                                                    >
-                                                        {header}
+                                                {fileData[currentFileIndex]?.sectionA.map((header: any, index: number) => (
+                                                    <th key={index}
+                                                        className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                                    {header}
                                                     </th>
                                                 ))}
                                             </tr>
                                             </thead>
                                             <tbody>
                                             <tr>
-                                                {extractedValues.map((value, index) => (
-                                                    <td
-                                                        key={index}
-                                                        className="py-3 px-4 border-b text-sm text-gray-700"
-                                                    >
+                                                {fileData[currentFileIndex]?.extractedValues.map((value: string, index: number) => (
+                                                    <td key={index}
+                                                        className="py-3 px-4 border-b text-sm text-gray-700">
                                                         {isEditMode ? (
                                                             <input
                                                                 type="text"
@@ -311,39 +336,33 @@ export default function LecturerItemRequest() {
                                         </table>
                                     </div>
 
-                                    {/* Section B */}
+                                    {/* Section B Table */}
                                     <div className="mt-8">
-                                        <div className="flex justify-between items-center">
-                                            <h2 className="text-2xl font-bold mb-4 text-gray-700">Section B</h2>
-                                        </div>
+                                        <h2 className="text-2xl font-bold mb-4 text-gray-700">Section B</h2>
                                         <div className="overflow-x-auto">
                                             <table className="min-w-full bg-white shadow-md rounded-lg">
                                                 <thead className="bg-gray-100 border-b">
                                                 <tr>
-                                                    {headers.map((header, index) => (
-                                                        <th
-                                                            key={index}
-                                                            className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-                                                        >
+                                                    {fileData[currentFileIndex]?.headers.map((header: string, index: number) => (
+                                                        <th key={index}
+                                                            className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                                             {header}
                                                         </th>
                                                     ))}
                                                 </tr>
                                                 </thead>
                                                 <tbody>
-                                                {currentData.map((row, rowIndex) => (
+                                                {currentData.map((row: any, rowIndex: number) => (
                                                     <tr key={rowIndex} className="even:bg-gray-50">
-                                                        {headers.map((header, colIndex) => (
-                                                            <td
-                                                                key={colIndex}
-                                                                className="py-3 px-4 border-b text-sm text-gray-700"
-                                                            >
+                                                        {fileData[currentFileIndex]?.headers.map((header: string, colIndex: number) => (
+                                                            <td key={colIndex}
+                                                                className="py-3 px-4 border-b text-sm text-gray-700">
                                                                 {isEditMode ? (
                                                                     <input
                                                                         type="text"
-                                                                        value={row[header] || ''}
+                                                                        value={row[header]}
                                                                         onChange={(e) => handleExcelInputChange(rowIndex, header, e.target.value)}
-                                                                        className="w-full px-2 py-1 border rounded"
+                                                                        className="border border-gray-300 rounded-md p-2"
                                                                     />
                                                                 ) : (
                                                                     row[header]
@@ -355,35 +374,37 @@ export default function LecturerItemRequest() {
                                                 </tbody>
                                             </table>
                                         </div>
-                                    </div>
 
-                                    {/* Pagination Controls */}
-                                    <div className="mt-8 flex justify-center">
-                                        <ReactPaginate
-                                            previousLabel={
-                                                <div
-                                                    className="flex items-center cursor-pointer text-black">
-                                                    <HiChevronLeft className="w-5 h-5"/>
-                                                </div>
-                                            }
-                                            nextLabel={
-                                                <div
-                                                    className="flex items-center cursor-pointer text-black">
-                                                    <HiChevronRight className="w-5 h-5"/>
-                                                </div>
-                                            }
-                                            breakLabel={'...'}
-                                            breakClassName={'mx-2 text-gray-600'}
-                                            pageCount={Math.ceil(excelData.length / itemsPerPage)}
-                                            marginPagesDisplayed={2}
-                                            pageRangeDisplayed={5}
-                                            onPageChange={handlePageChange}
-                                            containerClassName={'flex space-x-2 items-center'} // Flex container for spacing
-                                            pageClassName={'cursor-pointer bg-blue-500 border border-gray-300 py-2 px-4 rounded'} // Page number styles
-                                            activeClassName={'bg-blue-600 text-white'} // Active page styles
-                                        />
+                                        {/* Pagination Controls */}
+                                        <div className="mt-8 flex justify-center">
+                                            <ReactPaginate
+                                                previousLabel={
+                                                    <div
+                                                        className="flex items-center cursor-pointer text-gray-600 hover:text-gray-900">
+                                                        <HiChevronLeft className="w-4 h-4"/>
+                                                    </div>
+                                                }
+                                                nextLabel={
+                                                    <div
+                                                        className="flex items-center cursor-pointer text-gray-600 hover:text-gray-900">
+                                                        <HiChevronRight className="w-4 h-4"/>
+                                                    </div>
+                                                }
+                                                breakLabel={'...'}
+                                                pageCount={pageCount}
+                                                marginPagesDisplayed={1}
+                                                pageRangeDisplayed={2}
+                                                onPageChange={handlePageChange}
+                                                containerClassName={'flex space-x-1 items-center'}
+                                                pageClassName={'cursor-pointer text-sm text-gray-600 hover:text-gray-900 px-3 py-1'}
+                                                activeClassName={'bg-blue-500 text-white rounded-full px-3 py-1'}
+                                                disabledClassName={'text-gray-400 cursor-not-allowed'}
+                                                previousClassName={'text-sm'}
+                                                nextClassName={'text-sm'}
+                                            />
+                                        </div>
                                     </div>
-
+                                    {/* Submit Button */}
                                     <div className="mt-8 flex justify-end">
                                         <button
                                             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
@@ -397,9 +418,8 @@ export default function LecturerItemRequest() {
                             )}
                         </>
                     ) : (
-                        <div className="text-gray-500 italic text-center py-8">
-                            Submission is currently closed. You can only submit from Monday to Wednesday before 6 PM.
-                        </div>
+                        <div className="text-gray-500 italic text-center mt-4">Submission not allowed at this
+                            time.</div>
                     )}
                 </div>
             </div>

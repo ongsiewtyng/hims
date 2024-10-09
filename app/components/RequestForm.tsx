@@ -20,8 +20,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
     const [sectionA, setSectionA] = useState<any[]>([]);
     const [downloadLink, setDownloadLink] = useState<string | null>(null);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [pages, setPages] = useState<any[][]>([]);
-
+    const [allData, setAllData] = useState<any[][][]>([]); // Array of arrays to store data for each file
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files ? Array.from(e.target.files) : [];
@@ -107,8 +106,6 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
         }
     };
 
-
-
     const fetchAndReadFiles = (downloadURLs: string[]) => {
         const excelDateToFormattedDate = (serial: number): string => {
             const utcDays = Math.floor(serial - 25569);
@@ -120,12 +117,12 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
         };
 
         // Clear any previous data before processing new files
-        setSectionA([]);
-        setHeader([]);
-        setData([]);
+        setAllData([]);
 
         // Process each file separately
         downloadURLs.forEach((downloadURL, fileIndex) => {
+            console.log(`Processing file from URL: ${downloadURL}`); // Log the URL being processed
+
             fetch(downloadURL)
                 .then(response => {
                     if (!response.ok) {
@@ -144,6 +141,8 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
                                 const ws_name = wb.SheetNames[0];
                                 const ws = wb.Sheets[ws_name];
                                 const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+
+                                console.log(`Data for file ${fileIndex + 1}:`, jsonData); // Log the data for each file
 
                                 // Extract Section A data for this file
                                 const sectionA = jsonData.slice(5, 11);
@@ -205,10 +204,8 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
                                     return isEmpty ? null : row;
                                 }).filter(row => row !== null);
 
-                                // Update states to include the new file data
-                                setSectionA(prevSectionA => [...prevSectionA, sectionA]);
-                                setHeader(prevHeader => [...prevHeader, headerRow]);
-                                setData(prevData => [...prevData, processedDataRows]);
+                                // Update states to include the new file data separately
+                                setAllData(prevAllData => [...prevAllData, dataRows]); // Push each file's data into allData
 
                                 // Optionally, trigger any event on data change for the new file
                                 onExcelDataChange(sectionA, headerRow, processedDataRows, extractedValues, downloadURL);
