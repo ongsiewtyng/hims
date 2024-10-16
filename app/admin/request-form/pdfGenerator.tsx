@@ -122,10 +122,10 @@ export const createPdf = async (
 
     // Section A Data
     const firstItemSectionA = items[0]?.sectionA || {};
-    page.drawText(firstItemSectionA.deliveryDate || 'N/A', { x: col1X + 10, y: sectionATableY - 15, size: fontSize, font });
-    page.drawText(firstItemSectionA.projectDetails || 'N/A', { x: col1X + 10, y: sectionATableY - 35, size: fontSize, font });
-    page.drawText(firstItemSectionA.picContact || 'N/A', { x: col1X + 10, y: sectionATableY - 55, size: fontSize, font });
-    page.drawText(firstItemSectionA.entity || 'N/A', { x: col1X + 10, y: sectionATableY - 75, size: fontSize, font });
+    page.drawText(String(firstItemSectionA.deliveryDate || 'N/A'), { x: col1X + 10, y: sectionATableY - 15, size: fontSize, font });
+    page.drawText(String(firstItemSectionA.projectDetails || 'N/A'), { x: col1X + 10, y: sectionATableY - 35, size: fontSize, font });
+    page.drawText(String(firstItemSectionA.picContact || 'N/A'), { x: col1X + 10, y: sectionATableY - 55, size: fontSize, font });
+    page.drawText(String(firstItemSectionA.entity || 'N/A'), { x: col1X + 10, y: sectionATableY - 75, size: fontSize, font });
 
     // Section B Title - "Description / Details of Service / Product"
     const sectionBTitleY = sectionATableY - tableHeight - 40;
@@ -194,5 +194,7 @@ export const createPdf = async (
     });
 
     const pdfBytes = await pdfDoc.save();
-    return pdfBytes;
+    const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+
+    return { pdfBytes, pdfBlob };
 };
