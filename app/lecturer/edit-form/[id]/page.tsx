@@ -2,13 +2,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ref, get, update } from '@firebase/database';
-import { database } from '../../services/firebase';
+import { database } from '../../../services/firebase';
 
-interface EditFormProps {
-    id: string;
-}
-
-const EditForm: React.FC<EditFormProps> = ({ id }) => {
+const EditForm = ({ params }: { params: { id: string } }) => {
+    const id = params.id;
     const router = useRouter();
     const [request, setRequest] = useState<any>(null);
 

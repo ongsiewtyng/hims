@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from 'next/navigation';
 import { auth,getUserRole } from '../services/firebase';
 import {HiEye, HiEyeOff, HiXCircle} from "react-icons/hi";
+import { setCookie } from 'cookies-next';
 
 export default function SignIn() {
     const router = useRouter();
@@ -20,9 +21,13 @@ export default function SignIn() {
             const user = userCredential.user;
 
             if (user) {
-                // Fetch the user's role from Firebase
+                // Get the user's ID token and store it in a cookie
+                const token = await user.getIdToken();
+                setCookie('token', token, { maxAge: 60 * 60 * 24 }); // Store for 1 day
+
+                // Fetch the user's role
                 const role = await getUserRole(user.uid);
-                console.log('Fetched Role:', role); // Log fetched role
+                console.log('Fetched Role:', role);
 
                 // Redirect based on role
                 if (role === 'Admin') {
@@ -30,7 +35,7 @@ export default function SignIn() {
                 } else if (role === 'Lecturer') {
                     router.push('/lecturer/request-form');
                 } else {
-                    router.push('/signin'); // Handle unknown roles
+                    router.push('/signin');
                 }
             }
         } catch (error) {
