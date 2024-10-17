@@ -4,7 +4,11 @@ import { useRouter } from 'next/navigation';
 import { ref, get, update } from '@firebase/database';
 import { database } from '../../services/firebase';
 
-const EditForm: React.FC = ([id]) => {
+interface EditFormProps {
+    id: string;
+}
+
+const EditForm: React.FC<EditFormProps> = ({ id }) => {
     const router = useRouter();
     const [request, setRequest] = useState<any>(null);
 
