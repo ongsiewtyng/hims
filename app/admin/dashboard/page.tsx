@@ -25,11 +25,11 @@ export default function Dashboard() {
         name: string;
         id: string;
     }
-    type Category = {
-        name: string;
-        id: string;
-        categoryId: string;
-    }
+            type Category = {
+                name: string;
+                id: string;
+                categoryId: string;
+            }
     type FoodItems = {
         id: string;
         vendor: string;
@@ -195,7 +195,7 @@ export default function Dashboard() {
         if (addItemModal && vendorId) {
             const categoriesRef = ref(database, 'categories');
             onValue(categoriesRef, (snapshot) => {
-                const categoriesData = snapshot.val();
+                const categoriesData = snapshot.val() as Category[]
                 if (categoriesData) {
                     const vendorCategories = Object.values(categoriesData).filter((category: any) => category.vendor === vendor);
                     setCategories(vendorCategories);
