@@ -6,16 +6,19 @@ export async function POST(request: Request) {
     console.log('Received request');
 
     try {
-        const { recipient, items, pdfBuffer } = await request.json(); // Extract recipient and items from request body
+        const { recipient, items } = await request.json(); // Extract recipient and items from request body
 
         console.log("Received recipient:", recipient);
         console.log("Received items:", items);
-        console.log("Received pdfBuffer:", pdfBuffer);
 
         if (!recipient || !items) {
             console.log('Missing recipient or items');
             return NextResponse.json({ error: 'Recipient and items are required' }, { status: 400 });
         }
+
+        // Generate PDF
+        const pdfBytes = await createPdf(items);
+        const pdfBuffer = Buffer.from(pdfBytes);
 
         // Setup Nodemailer transporter
         const transporter = nodemailer.createTransport({
