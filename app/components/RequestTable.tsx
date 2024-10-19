@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ref, onValue } from "firebase/database";
-import { HiOutlineArrowLeft, HiOutlineArrowRight, HiOutlineSearch } from "react-icons/hi";
+import { ref, onValue } from "@firebase/database";
+import { HiOutlineSearch } from "react-icons/hi";
 import Modal from "../components/requestModal";
 import { database } from "../services/firebase";
 
@@ -22,8 +22,6 @@ const ProgressTracker = () => {
     const [requests, setRequests] = useState<Request[]>([]);
     const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
-    const rowsPerPage = 10;
 
     const formatDate = (date: string) => {
         const options: Intl.DateTimeFormatOptions = {

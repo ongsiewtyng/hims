@@ -421,15 +421,15 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                 )}
 
 
-                {/* Vendor Selection Modal */}
-                {showVendorModal && (
-                    <VendorSelectionModal
-                        isOpen={showVendorModal}
-                        onClose={() => setShowVendorModal(false)}
-                        fileUrl={selectedFileUrl}
-                        vendors={vendors}// Pass the list of vendors here
-                    />
-                )}
+                {/*/!* Vendor Selection Modal *!/*/}
+                {/*{showVendorModal && (*/}
+                {/*    <VendorSelectionModal*/}
+                {/*        isOpen={showVendorModal}*/}
+                {/*        onClose={() => setShowVendorModal(false)}*/}
+                {/*        fileUrl={selectedFileUrl}*/}
+                {/*        vendors={vendors}// Pass the list of vendors here*/}
+                {/*    />*/}
+                {/*)}*/}
 
             </div>
             {/* Notification Bar */}

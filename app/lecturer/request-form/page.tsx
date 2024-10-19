@@ -85,6 +85,7 @@ export default function LecturerItemRequest() {
 
     // Handles new file data
     const handleExcelDataChange = (sectionA: any[], header: string[], data: any[], extractedValues: any[], downloadURL: string) => {
+
         const newFileData = {
             sectionA,
             headers: header,
@@ -167,7 +168,7 @@ export default function LecturerItemRequest() {
     }, [isCountdownEnabled]);
 
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         if (confirm('Do you want to submit the form?')) {
             try {
                 const auth = getAuth();

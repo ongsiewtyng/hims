@@ -1,5 +1,5 @@
 'use client'
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { HiOutlineDocumentAdd } from "react-icons/hi";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -11,23 +11,10 @@ type RequestFormProps = {
 
 const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
     const [message, setMessage] = useState('No Files Selected');
-    //const [excelData, setExcelData] = useState<any[]>([]);
     const [isFormVisible, setIsFormVisible] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
-    const [previousExcelData, setPreviousExcelData] = useState<any[]>([]);
-    const [header, setHeader] = useState<string[]>([]);
-    const [data, setData] = useState<any[]>([]);
-    const [sectionA, setSectionA] = useState<any[]>([]);
-    const [downloadLink, setDownloadLink] = useState<string | null>(null);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [allData, setAllData] = useState<any[][][]>([]); // Array of arrays to store data for each file
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files ? Array.from(e.target.files) : [];
-        if (files.length > 0) {
-            updateDropzoneFileList(files);
-        }
-    };
+    const [allData, setAllData] = useState<any[][][]>([]);
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -38,17 +25,31 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
         e.currentTarget.classList.remove('dropzone--over');
     };
 
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.currentTarget.classList.remove('dropzone--over');
-        const files = Array.from(e.dataTransfer.files);
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files ? Array.from(e.target.files) : [];
         if (files.length > 0) {
+            const invalidFiles = files.filter(file => !file.type.includes('excel') && !file.type.includes('spreadsheetml'));
+            if (invalidFiles.length > 0) {
+                alert('Only Excel files are allowed.');
+                return;
+            }
             updateDropzoneFileList(files);
         }
     };
 
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        const files = Array.from(e.dataTransfer.files);
+        const invalidFiles = files.filter(file => !file.type.includes('excel') && !file.type.includes('spreadsheetml'));
+        if (invalidFiles.length > 0) {
+            alert('Only Excel files are allowed.');
+            return;
+        }
+        updateDropzoneFileList(files);
+    };
+
     const updateDropzoneFileList = (files: File[]) => {
-        setSelectedFiles(files);
+        setSelectedFiles(prevFiles => [...prevFiles, ...files]);
         setMessage(`${files.length} file(s) selected`);
     };
 
@@ -57,77 +58,56 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
         setSelectedFiles([]);
     };
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-
         if (selectedFiles.length > 0) {
-            setIsUploading(true); // Show loader
+            setIsUploading(true);
+            const downloadURLs = await uploadFiles(selectedFiles);
+            fetchAndReadFiles(downloadURLs);
+            setIsUploading(false);
+            setIsFormVisible(false);
+        } else {
+            alert('Please select one or more files.');
+        }
+    };
 
-            const downloadURLs: string[] = []; // Accumulate download URLs here
+    const uploadFiles = async (files: File[]): Promise<string[]> => {
+        const downloadURLs: string[] = [];
+        const storage = getStorage();
 
-            selectedFiles.forEach((file, index) => {
-                // Create a storage reference
-                const storage = getStorage();
-                const storageRef = ref(storage, 'uploads/' + file.name);
+        for (const file of files) {
+            const storageRef = ref(storage, 'uploads/' + file.name);
+            const uploadTask = uploadBytesResumable(storageRef, file);
 
-                // Upload the file
-                const uploadTask = uploadBytesResumable(storageRef, file);
-
-                // Get the download URL and read the file content
+            await new Promise<void>((resolve, reject) => {
                 uploadTask.on(
                     'state_changed',
                     (snapshot) => {
-                        // Handle progress
                         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
                         console.log(`Upload for ${file.name} is ${progress}% done`);
                     },
                     (error) => {
-                        // Handle error
                         console.error('Upload error:', error);
+                        reject(error);
                     },
                     () => {
-                        // Handle successful upload
                         getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                            console.log(`File available at: ${downloadURL}`);
-                            downloadURLs.push(downloadURL); // Add URL to the array
-
-                            // After all files have been uploaded, process them
-                            if (downloadURLs.length === selectedFiles.length) {
-                                fetchAndReadFiles(downloadURLs); // Pass array of URLs
-                                setIsUploading(false); // Hide loader when all files are uploaded
-                                setIsFormVisible(false); // Hide form
-                            }
+                            downloadURLs.push(downloadURL);
+                            resolve();
                         });
                     }
                 );
             });
-        } else {
-            console.log('No files selected');
         }
+        return downloadURLs;
     };
 
     const fetchAndReadFiles = (downloadURLs: string[]) => {
-        const excelDateToFormattedDate = (serial: number): string => {
-            const utcDays = Math.floor(serial - 25569);
-            const date = new Date(utcDays * 86400 * 1000);
-            const dd = String(date.getDate()).padStart(2, '0');
-            const mm = String(date.getMonth() + 1).padStart(2, '0');
-            const yyyy = date.getFullYear();
-            return `${dd}/${mm}/${yyyy}`;
-        };
-
-        // Clear any previous data before processing new files
         setAllData([]);
-
-        // Process each file separately
         downloadURLs.forEach((downloadURL, fileIndex) => {
-            console.log(`Processing file from URL: ${downloadURL}`); // Log the URL being processed
-
             fetch(downloadURL)
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
+                    if (!response.ok) throw new Error('Network response was not ok');
                     return response.blob();
                 })
                 .then(blob => {
@@ -136,79 +116,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
                         if (evt.target) {
                             const getData = evt.target.result as ArrayBuffer;
                             if (getData) {
-                                const data = new Uint8Array(getData);
-                                const wb = XLSX.read(data, { type: 'array' });
-                                const ws_name = wb.SheetNames[0];
-                                const ws = wb.Sheets[ws_name];
-                                const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-
-                                console.log(`Data for file ${fileIndex + 1}:`, jsonData); // Log the data for each file
-
-                                // Extract Section A data for this file
-                                const sectionA = jsonData.slice(5, 11);
-                                const result: { [key: string]: any } = {};
-
-                                sectionA.forEach((row) => {
-                                    const header = row[0].replace(':', '').trim();
-                                    let value = row[row.length - 1];
-
-                                    // Convert the value to the desired date format if it's the delivery date
-                                    if (header === 'Delivery Date' && typeof value === 'number') {
-                                        value = excelDateToFormattedDate(value);
-                                    }
-
-                                    result[header] = value;
-                                });
-
-                                const extractedValues = Object.values(result).map(value => String(value));
-
-                                // Extract table data from the file
-                                const headerRow = jsonData[13];
-                                const dataRows = jsonData.slice(14).map((row) => {
-                                    let rowData: { [key: string]: any } = {};
-                                    headerRow.forEach((header, index) => {
-                                        let cellValue = row[index];
-
-                                        // Convert the cell value to the desired date format if it's the delivery date
-                                        if (header === 'Delivery Date' && typeof cellValue === 'number') {
-                                            cellValue = excelDateToFormattedDate(cellValue);
-                                        }
-
-                                        rowData[header] = cellValue;
-                                    });
-                                    return rowData;
-                                });
-
-                                let lastVendor = "";
-
-                                // Process data rows for the current file
-                                const processedDataRows = dataRows.map((row) => {
-                                    let isEmpty = true;
-
-                                    for (const key in row) {
-                                        if (row[key] !== undefined && row[key] !== "") {
-                                            isEmpty = false;
-
-                                            if (key === 'Suggested Vendor ' && (row[key] === undefined || row[key] === "")) {
-                                                row[key] = lastVendor;
-                                            } else if (key === 'Suggested Vendor ' && row[key] !== undefined && row[key] !== "") {
-                                                lastVendor = row[key];
-                                            }
-                                        }
-                                    }
-
-                                    if (row['Suggested Vendor '] === undefined || row['Suggested Vendor '] === "") {
-                                        row['Suggested Vendor '] = lastVendor;
-                                    }
-
-                                    return isEmpty ? null : row;
-                                }).filter(row => row !== null);
-
-                                // Update states to include the new file data separately
-                                setAllData(prevAllData => [...prevAllData, dataRows]); // Push each file's data into allData
-
-                                // Optionally, trigger any event on data change for the new file
-                                onExcelDataChange(sectionA, headerRow, processedDataRows, extractedValues, downloadURL);
+                                processExcelData(getData, fileIndex, downloadURL);
                             }
                         }
                     };
@@ -218,12 +126,68 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
         });
     };
 
+    const processExcelData = (data: ArrayBuffer, fileIndex: number, downloadURL: string) => {
+        const excelDateToFormattedDate = (serial: number): string => {
+            const utcDays = Math.floor(serial - 25569);
+            const date = new Date(utcDays * 86400 * 1000);
+            const dd = String(date.getDate()).padStart(2, '0');
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const yyyy = date.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        };
 
-    useEffect(() => {
-        if (JSON.stringify(data) !== JSON.stringify(previousExcelData)) {
-            setPreviousExcelData(data);
-        }
-    }, [data, previousExcelData]);
+        const wb = XLSX.read(new Uint8Array(data), { type: 'array' });
+        const ws_name = wb.SheetNames[0];
+        const ws = wb.Sheets[ws_name];
+        const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+
+        const sectionA = jsonData.slice(5, 11);
+        const result: { [key: string]: any } = {};
+        sectionA.forEach((row) => {
+            const header = row[0].replace(':', '').trim();
+            let value = row[row.length - 1];
+            if (header === 'Delivery Date' && typeof value === 'number') {
+                value = excelDateToFormattedDate(value);
+            }
+            result[header] = value;
+        });
+        const extractedValues = Object.values(result).map(value => String(value));
+
+        const headerRow = jsonData[13];
+        const dataRows = jsonData.slice(14).map((row) => {
+            let rowData: { [key: string]: any } = {};
+            headerRow.forEach((header, index) => {
+                let cellValue = row[index];
+                if (header === 'Delivery Date' && typeof cellValue === 'number') {
+                    cellValue = excelDateToFormattedDate(cellValue);
+                }
+                rowData[header] = cellValue;
+            });
+            return rowData;
+        });
+
+        let lastVendor = "";
+        const processedDataRows = dataRows.map((row) => {
+            let isEmpty = true;
+            for (const key in row) {
+                if (row[key] !== undefined && row[key] !== "") {
+                    isEmpty = false;
+                    if (key === 'Suggested Vendor ' && (row[key] === undefined || row[key] === "")) {
+                        row[key] = lastVendor;
+                    } else if (key === 'Suggested Vendor ' && row[key] !== undefined && row[key] !== "") {
+                        lastVendor = row[key];
+                    }
+                }
+            }
+            if (row['Suggested Vendor '] === undefined || row['Suggested Vendor '] === "") {
+                row['Suggested Vendor '] = lastVendor;
+            }
+            return isEmpty ? null : row;
+        }).filter(row => row !== null);
+
+        setAllData(prevAllData => [...prevAllData, dataRows]);
+        onExcelDataChange(sectionA, headerRow, processedDataRows, extractedValues, downloadURL);
+    };
 
     return (
         <div className="relative flex flex-col max-w-xl w-full mt-4">
@@ -284,4 +248,3 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
 }
 
 export default RequestForm;
-

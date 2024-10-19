@@ -1,10 +1,10 @@
 'use client'
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from 'next/navigation';
 import { auth,getUserRole } from '../services/firebase';
 import {HiEye, HiEyeOff, HiXCircle} from "react-icons/hi";
-import { setCookie } from 'cookies-next';
+import { setCookie, getCookie } from 'cookies-next';
 
 export default function SignIn() {
     const router = useRouter();
@@ -13,7 +13,25 @@ export default function SignIn() {
     const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
 
-    const handleSignIn = async (e : React.SyntheticEvent) => {
+    useEffect(() => {
+        const interval = setInterval(refreshToken, 5 * 60 * 1000); // Check every 5 minutes
+        return () => clearInterval(interval);
+    }, []);
+
+    const refreshToken = async () => {
+        const tokenExpiration = getCookie('tokenExpiration');
+        if (tokenExpiration && new Date().getTime() > Number(tokenExpiration) - 5 * 60 * 1000) { // 5 minutes before expiration
+            const user = auth.currentUser;
+            if (user) {
+                const token = await user.getIdToken(true); // Force refresh
+                const expirationTime = new Date().getTime() + 3600 * 1000; // 1 hour from now
+                setCookie('token', token, { maxAge: 60 * 60 * 24 }); // Store for 1 day
+                setCookie('tokenExpiration', expirationTime, { maxAge: 60 * 60 * 24 }); // Store for 1 day
+            }
+        }
+    }
+
+    const handleSignIn = async (e: React.SyntheticEvent) => {
         e.preventDefault();
 
         try {
@@ -23,7 +41,9 @@ export default function SignIn() {
             if (user) {
                 // Get the user's ID token and store it in a cookie
                 const token = await user.getIdToken();
+                const expirationTime = new Date().getTime() + 3600 * 1000; // 1 hour from now
                 setCookie('token', token, { maxAge: 60 * 60 * 24 }); // Store for 1 day
+                setCookie('tokenExpiration', expirationTime, { maxAge: 60 * 60 * 24 }); // Store for 1 day
 
                 // Fetch the user's role
                 const role = await getUserRole(user.uid);
@@ -35,7 +55,7 @@ export default function SignIn() {
                 } else if (role === 'Lecturer') {
                     router.push('/lecturer/request-form');
                 } else {
-                    router.push('/signin');
+                    router.push('/sign-in');
                 }
             }
         } catch (error) {

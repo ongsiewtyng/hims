@@ -25,11 +25,11 @@ export default function Dashboard() {
         name: string;
         id: string;
     }
-            type Category = {
-                name: string;
-                id: string;
-                categoryId: string;
-            }
+    type Category = {
+        name: string;
+        id: string;
+        categoryId: string;
+    }
     type FoodItems = {
         id: string;
         vendor: string;
