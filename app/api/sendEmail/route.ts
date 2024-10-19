@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     console.log('Received request');
 
     try {
-        const { recipient, items, pdfBuffer } = await request.json(); // Extract recipient and items from request body
+        const { recipient, items } = await request.json(); // Extract recipient and items from request body
 
         console.log("Received recipient:", recipient);
         console.log("Received items:", items);
@@ -16,6 +16,17 @@ export async function POST(request: Request) {
             console.log('Missing recipient or items');
             return NextResponse.json({ error: 'Recipient and items are required' }, { status: 400 });
         }
+        const { pdfBytes } = await createPdf(items);
+
+        if (!(pdfBytes instanceof Uint8Array || Buffer.isBuffer(pdfBytes))) {
+            throw new Error('Invalid PDF data type, must be Uint8Array or Buffer');
+        }
+
+        console.log('PDF Bytes:', pdfBytes);
+
+        const pdfBuffer = Buffer.from(pdfBytes);
+
+        console.log('PDF Buffer:', pdfBuffer);
 
         // Setup Nodemailer transporter
         const transporter = nodemailer.createTransport({
