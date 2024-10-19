@@ -34,7 +34,7 @@ export async function POST(request: Request) {
             attachments: [
                 {
                     filename: 'Request_Details.pdf',
-                    content: pdfBuffer,
+                    content: Buffer.from(pdfBuffer.data),
                     contentType: 'application/pdf',
                 },
             ],
