@@ -4,21 +4,13 @@ import { createPdf } from '../../admin/request-form/pdfGenerator'; // Your PDF g
 
 export async function POST(request: Request) {
     try {
-        const { recipient, items } = await request.json(); // Extract recipient and items from request body
+        const { recipient, items, pdfBuffer } = await request.json(); // Extract recipient and items from request body
 
         console.log("Received recipient:", recipient);
         console.log("Received items:", items);
 
         if (!recipient || !items) {
             return NextResponse.json({ error: 'Recipient and items are required' }, { status: 400 });
-        }
-
-        // Generate PDF from items (Ensure createPdf returns a valid Uint8Array or Buffer)
-        const {pdfBytes} = await createPdf(items);
-        if (!Buffer.isBuffer(pdfBytes)) {
-            throw new Error('PDF generation failed. Expected Buffer.');
-        } else {
-            console.log("PDF:", pdfBytes);
         }
 
         // Setup Nodemailer transporter
@@ -39,7 +31,7 @@ export async function POST(request: Request) {
             attachments: [
                 {
                     filename: 'Request_Details.pdf',
-                    content: pdfBytes,
+                    content: pdfBuffer,
                     contentType: 'application/pdf',
                 },
             ],
