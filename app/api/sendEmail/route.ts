@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createPdf } from '../../admin/request-form/pdfGenerator'; // Your PDF generator
 
 export async function POST(request: Request) {
-    console.log('Received request:', request);
+    console.log('Received request');
 
     try {
         const { recipient, items, pdfBuffer } = await request.json(); // Extract recipient and items from request body
@@ -13,6 +13,7 @@ export async function POST(request: Request) {
         console.log("Received pdfBuffer:", pdfBuffer);
 
         if (!recipient || !items) {
+            console.log('Missing recipient or items');
             return NextResponse.json({ error: 'Recipient and items are required' }, { status: 400 });
         }
 
@@ -47,6 +48,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: 'Email sent successfully' });
     } catch (error) {
         console.error('Error sending email:', error);
-        return NextResponse.json({ error: 'Error sending email' }, { status: 500 });
+        return NextResponse.json({ error: 'Error sending email test' }, { status: 500 });
     }
 }
