@@ -14,7 +14,7 @@ export async function POST(request: Request) {
         }
 
         // Generate PDF from items (Ensure createPdf returns a valid Uint8Array or Buffer)
-        const pdfBytes = await createPdf(items);
+        const {pdfBytes} = await createPdf(items);
         if (!Buffer.isBuffer(pdfBytes)) {
             throw new Error('PDF generation failed. Expected Buffer.');
         }
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
             attachments: [
                 {
                     filename: 'Request_Details.pdf',
-                    content: Buffer.from(pdfBytes), // Buffer containing the PDF
+                    content: pdfBytes, // Buffer containing the PDF
                     contentType: 'application/pdf',
                 },
             ],
