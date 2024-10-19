@@ -33,7 +33,8 @@ export const createPdf = async (
 
     try {
         // Fetch and embed the logo
-        const logoUrl = new URL('/logo.png', 'http://localhost:3000'); // Replace with actual URL
+        // const logoUrl = new URL('/logo.png', 'http://localhost:3000'); // Replace with actual URL
+        const logoUrl = new URL('/logo.png', 'https://hims-five.vercel.app'); // Replace with actual URL
         const response = await fetch(logoUrl.href);
         if (!response.ok) throw new Error('Failed to fetch logo');
 
@@ -183,18 +184,21 @@ export const createPdf = async (
 
     let yPosition = tableStartY - 35; // Start position for item rows
 
-    // Add item rows
-    items.forEach((row, index) => {
-        page.drawText((index + 1).toString(), { x: tableMarginX + 10, y: yPosition, size: fontSize, font });
-        page.drawText(row.item || 'N/A', { x: col2X + 10, y: yPosition, size: fontSize, font });
-        page.drawText(row.quantity.toString(), { x: col3X + 10, y: yPosition, size: fontSize, font });
-        page.drawText(row.unit || 'N/A', { x: col4X + 10, y: yPosition, size: fontSize, font });
-
-        yPosition -= 20;
+    // Populate the item rows
+    items.forEach((item, index) => {
+        const rowY = tableStartY - 35 - index * 20;
+        page.drawText((index + 1).toString(), {x: tableMarginX + 10, y: rowY, size: fontSize, font});
+        page.drawText(item.item, { x: col2X + 10, y: rowY, size: fontSize, font });
+        page.drawText(String(item.quantity), { x: col3X + 10, y: rowY, size: fontSize, font });
+        page.drawText(item.unit, { x: col4X + 10, y: rowY, size: fontSize, font });
     });
 
+    // Serialize the PDF document to bytes
     const pdfBytes = await pdfDoc.save();
+
+    // Create a Blob for client-side preview
     const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
 
-    return { pdfBytes, pdfBlob };
+    // Return both Blob for preview and pdfBytes as Uint8Array for backend use
+    return { pdfBlob, pdfBytes: new Uint8Array(pdfBytes) };
 };
