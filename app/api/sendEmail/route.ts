@@ -3,11 +3,14 @@ import { NextResponse } from 'next/server';
 import { createPdf } from '../../admin/request-form/pdfGenerator'; // Your PDF generator
 
 export async function POST(request: Request) {
+    console.log('Received request:', request);
+
     try {
         const { recipient, items, pdfBuffer } = await request.json(); // Extract recipient and items from request body
 
         console.log("Received recipient:", recipient);
         console.log("Received items:", items);
+        console.log("Received pdfBuffer:", pdfBuffer);
 
         if (!recipient || !items) {
             return NextResponse.json({ error: 'Recipient and items are required' }, { status: 400 });
