@@ -22,12 +22,6 @@ export async function POST(request: Request) {
             throw new Error('Invalid PDF data type, must be Uint8Array or Buffer');
         }
 
-        console.log('PDF Bytes:', pdfBytes);
-
-        const pdfBuffer = Buffer.from(pdfBytes);
-
-        console.log('PDF Buffer:', pdfBuffer);
-
         // Setup Nodemailer transporter
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -46,7 +40,7 @@ export async function POST(request: Request) {
             attachments: [
                 {
                     filename: 'Request_Details.pdf',
-                    content: pdfBuffer,
+                    content: new Buffer(pdfBytes),
                     contentType: 'application/pdf',
                 },
             ],
