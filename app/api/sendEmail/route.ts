@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
-import { createPdf } from '../../admin/request-form/pdfGenerator'; // Import your PDF generation function
+import { createPdf } from '../../admin/request-form/pdfGenerator'; // Your PDF generator
 
 export async function POST(request: Request) {
     try {
@@ -13,8 +13,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Recipient and items are required' }, { status: 400 });
         }
 
-        // Generate PDF from items
-        const pdfBytes = await createPdf(items); // Assuming createPdf is the function that generates your PDF and returns a Buffer
+        // Generate PDF from items (Ensure createPdf returns a valid Uint8Array or Buffer)
+        const pdfBytes = await createPdf(items);
+        if (!Buffer.isBuffer(pdfBytes)) {
+            throw new Error('PDF generation failed. Expected Buffer.');
+        }
 
         // Setup Nodemailer transporter
         const transporter = nodemailer.createTransport({
@@ -27,14 +30,14 @@ export async function POST(request: Request) {
 
         const mailOptions = {
             from: process.env.EMAIL_USER,
-            to: recipient, // Recipient email address
+            to: recipient,
             subject: 'Requested Items and Quantity Details',
             text: 'Please find the attached PDF with the requested item details.',
             html: `<p>Please find the attached PDF with the requested item details.</p>`,
             attachments: [
                 {
                     filename: 'Request_Details.pdf',
-                    content: pdfBytes, // Buffer from generated PDF
+                    content: Buffer.from(pdfBytes), // Buffer containing the PDF
                     contentType: 'application/pdf',
                 },
             ],
@@ -42,6 +45,8 @@ export async function POST(request: Request) {
 
         // Send the email
         await transporter.sendMail(mailOptions);
+
+        console.log('Email sent successfully to:', recipient);
         return NextResponse.json({ message: 'Email sent successfully' });
     } catch (error) {
         console.error('Error sending email:', error);
