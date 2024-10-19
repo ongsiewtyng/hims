@@ -17,6 +17,8 @@ export async function POST(request: Request) {
         const {pdfBytes} = await createPdf(items);
         if (!Buffer.isBuffer(pdfBytes)) {
             throw new Error('PDF generation failed. Expected Buffer.');
+        } else {
+            console.log("PDF:", pdfBytes);
         }
 
         // Setup Nodemailer transporter
@@ -27,8 +29,6 @@ export async function POST(request: Request) {
                 pass: process.env.EMAIL_PASS,
             },
         });
-
-        console.log("PDF:", pdfBytes);
 
         const mailOptions = {
             from: process.env.EMAIL_USER,
