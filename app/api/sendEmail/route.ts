@@ -4,24 +4,18 @@ import { createPdf } from '../../admin/request-form/pdfGenerator'; // Your PDF g
 
 export async function POST(request: Request) {
     console.log('Received request');
+    const { recipient, items, pdfBuffer } = await request.json(); // Extract recipient and items from request body
+
+    console.log("Received recipient:", recipient);
+    console.log("Received items:", items);
+    console.log("Received pdfBuffer:", pdfBuffer);
+
+    if (!recipient || !items) {
+        console.log('Missing recipient or items');
+        return NextResponse.json({ error: 'Recipient and items are required' }, { status: 400 });
+    }
 
     try {
-        const { recipient, items } = await request.json(); // Extract recipient and items from request body
-
-        console.log("Received recipient:", recipient);
-        console.log("Received items:", items);
-        console.log("Received pdfBuffer:", pdfBuffer);
-
-        if (!recipient || !items) {
-            console.log('Missing recipient or items');
-            return NextResponse.json({ error: 'Recipient and items are required' }, { status: 400 });
-        }
-        const { pdfBytes } = await createPdf(items);
-
-        if (!(pdfBytes instanceof Uint8Array || Buffer.isBuffer(pdfBytes))) {
-            throw new Error('Invalid PDF data type, must be Uint8Array or Buffer');
-        }
-
         // Setup Nodemailer transporter
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -40,7 +34,7 @@ export async function POST(request: Request) {
             attachments: [
                 {
                     filename: 'Request_Details.pdf',
-                    content: new Buffer(pdfBytes),
+                    content: pdfBuffer,
                     contentType: 'application/pdf',
                 },
             ],
@@ -53,6 +47,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: 'Email sent successfully' });
     } catch (error) {
         console.error('Error sending email:', error);
-        return NextResponse.json({ error: error }, { status: 500 });
+        return NextResponse.json({ error: pdfBuffer }, { status: 500 });
     }
 }
