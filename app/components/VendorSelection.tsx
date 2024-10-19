@@ -312,6 +312,7 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
                 }, 3000);
             } else {
                 const errorData = await response.json();
+                console.error('Failed to send email:', errorData.error);
                 setError('Failed to send email: ' + errorData.error);
             }
         } catch (error) {
