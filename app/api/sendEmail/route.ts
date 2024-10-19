@@ -17,7 +17,7 @@ export async function POST(request: Request) {
         }
 
         // Generate PDF
-        const pdfBytes = await createPdf(items);
+        const {pdfBytes} = await createPdf(items);
         const pdfBuffer = Buffer.from(pdfBytes);
 
         // Setup Nodemailer transporter
