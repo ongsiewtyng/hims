@@ -28,6 +28,8 @@ export async function POST(request: Request) {
             },
         });
 
+        console.log("PDF:", pdfBytes);
+
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: recipient,
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
             attachments: [
                 {
                     filename: 'Request_Details.pdf',
-                    content: pdfBytes, // Buffer containing the PDF
+                    content: pdfBytes,
                     contentType: 'application/pdf',
                 },
             ],
