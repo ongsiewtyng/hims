@@ -206,7 +206,10 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
     const generatePdfPreview = async (request: Request) => {
         try {
             console.log('Selected week:', selectedWeek);
-            const items = await fetchItems();  // Use your fetch logic here
+
+            // Fetch items using your logic
+            const items = await fetchItems();
+
             if (items.length === 0) {
                 setError('No items found for the preview');
                 return;
@@ -222,22 +225,25 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
                 entity: request.sectionA[5]?.[5] || 'N/A',
             };
 
+            // Map the items to include the required properties
             const mappedItems = request.excelData.map(item => ({
                 ...item,
-                item: item["Description of Item "] || 'N/A',  // Make sure to include the space in the key
+                item: item["Description of Item "] || 'N/A',  // Ensure the space in the key is correct
                 quantity: item["Qty"] || 'N/A',
                 sectionA: sectionAData,
                 unit: item["UOM (Unit, KG, Month, Job)"] || 'N/A',
             }));
 
-
             // Generate the PDF preview
             const { pdfBlob } = await createPdf(mappedItems);
+
+            // Create a URL for the PDF Blob
             const pdfUrl = URL.createObjectURL(pdfBlob);
 
             // Open the PDF URL in a new tab
             window.open(pdfUrl, '_blank');  // This will open the PDF in a new tab
-            return pdfUrl;
+
+            return pdfUrl;  // Optionally return the PDF URL if needed
         } catch (error) {
             console.error('Error generating PDF preview:', error);
             setError('Error generating PDF preview');
@@ -270,8 +276,18 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
                 unit: item.unit
             }));
 
-            const pdfBytes = await createPdf(mappedItems);
-            const pdfBase64 = Buffer.from(pdfBytes).toString('base64');
+            // Generate PDF (Ensure createPdf returns a valid Uint8Array or Buffer)
+            const { pdfBytes } = await createPdf(mappedItems);
+
+            if (!(pdfBytes instanceof Uint8Array || Buffer.isBuffer(pdfBytes))) {
+                throw new Error('Invalid PDF data type, must be Uint8Array or Buffer');
+            }
+
+            console.log('PDF Bytes:', pdfBytes);
+
+            const pdfBuffer = Buffer.from(pdfBytes);
+
+            console.log('PDF Buffer:', pdfBuffer);
 
             // Send the email
             const response = await fetch('/api/sendEmail', {
@@ -281,8 +297,8 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
                 },
                 body: JSON.stringify({
                     recipient: selectedVendor.email,
-                    items: mappedItems,
-                    pdfBase64,
+                    items: mappedItems, // Ensure items are correctly formatted
+                    pdfBuffer,           // Send the PDF Buffer
                     pdfFileName: generatePdfFileName(selectedWeek, selectedVendor.name),
                 }),
             });
@@ -305,6 +321,7 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
             setSending(false);
         }
     };
+
 
     return isOpen ? (
         <div className="fixed inset-0 flex items-center justify-center z-50 text-black">
