@@ -1,7 +1,7 @@
 'use client'
 import RequestForm from '../../components/RequestForm';
 import SidenavLecturer from "../../components/SidenavLecturer";
-import {useEffect, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {database} from "../../services/firebase";
 import {push, ref, set, onValue} from "@firebase/database";
 import {getAuth} from "firebase/auth";
@@ -208,6 +208,33 @@ export default function LecturerItemRequest() {
         }
     };
 
+    const handleCancel = (e: React.MouseEvent<HTMLButtonElement>) => {
+        if (confirm('Do you want to cancel the submission?')) {
+            setShowExcelData(false);
+            setFormKey(prevKey => prevKey + 1); // Reset the form key to remount the RequestForm component
+        }
+
+        setFileData([]);
+        setCurrentFileIndex(0);
+        setSectionA([]);
+        setExcelData([]);
+        setDownloadURL('');
+        setSelectedWeeks([]);
+
+        // Check if the form should be submittable based on the countdown setting
+        if (!isCountdownEnabled) {
+            setIsSubmittable(true);
+        } else {
+            // Check if the form should be submittable based on the current time and day
+            const now = new Date();
+            const day = now.getDay();
+            const hour = now.getHours();
+            const isWithinWeek = (day >= 1 && day < 3) || (day === 3 && hour < 18); // Monday to Wednesday before 6 PM
+
+            setIsSubmittable(isWithinWeek);
+        }
+    };
+
     const toggleEditMode = () => {
         setIsEditMode(!isEditMode);
     };
@@ -310,7 +337,7 @@ export default function LecturerItemRequest() {
                                                 {fileData[currentFileIndex]?.sectionA.map((header: any, index: number) => (
                                                     <th key={index}
                                                         className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                                    {header}
+                                                        {header}
                                                     </th>
                                                 ))}
                                             </tr>
@@ -394,7 +421,7 @@ export default function LecturerItemRequest() {
                                                 breakLabel={'...'}
                                                 pageCount={pageCount}
                                                 marginPagesDisplayed={1}
-                                                pageRangeDisplayed={2}
+                                                pageRangeDisplayed={3}
                                                 onPageChange={handlePageChange}
                                                 containerClassName={'flex space-x-1 items-center'}
                                                 pageClassName={'cursor-pointer text-sm text-gray-600 hover:text-gray-900 px-3 py-1'}
@@ -405,8 +432,13 @@ export default function LecturerItemRequest() {
                                             />
                                         </div>
                                     </div>
-                                    {/* Submit Button */}
-                                    <div className="mt-8 flex justify-end">
+                                    <div className="mt-8 flex justify-between">
+                                        <button
+                                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+                                            onClick={handleCancel}
+                                        >
+                                            Cancel
+                                        </button>
                                         <button
                                             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
                                             onClick={handleSubmit}

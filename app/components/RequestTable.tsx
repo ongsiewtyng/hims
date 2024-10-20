@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ref, onValue } from "@firebase/database";
+import { ref, onValue } from "firebase/database";
 import { HiOutlineSearch } from "react-icons/hi";
 import Modal from "../components/requestModal";
 import { database } from "../services/firebase";

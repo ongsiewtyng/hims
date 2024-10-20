@@ -11,7 +11,7 @@ import {
     HiOutlinePlus,
     HiOutlineShoppingCart,
     HiOutlineViewGrid,
-    HiOutlineDocumentText, HiOutlineArrowRight, HiOutlineArrowLeft, HiChevronRight, HiChevronLeft
+    HiOutlineDocumentText, HiOutlineArrowRight, HiOutlineArrowLeft
 } from "react-icons/hi";
 import { getDatabase, ref, get, set } from "@firebase/database";
 import {onValue} from "firebase/database";
@@ -64,7 +64,7 @@ export default function Home() {
                 setVendorCount(0);
             }
         }
-        fetchVendorCount();
+        fetchVendorCount().catch(console.error);
     }, []);
 
     useEffect(() => {
@@ -79,7 +79,7 @@ export default function Home() {
                 setCategoryCount(0);
             }
         }
-        fetchCategoryCount();
+        fetchCategoryCount().catch(console.error);
     }, []);
 
     useEffect(() => {
@@ -94,7 +94,7 @@ export default function Home() {
                 setTotalItems(0);
             }
         }
-        fetchTotalItems();
+        fetchTotalItems().catch(console.error);
     }, []);
 
     useEffect(() => {
@@ -119,10 +119,10 @@ export default function Home() {
         const now = Date.now();
 
         if (!lastReset || now - parseInt(lastReset, 10) > oneWeekInMilliseconds) {
-            resetActivities();
+            resetActivities().catch(console.error);
             localStorage.setItem('lastReset', now.toString());
         } else {
-            fetchActivities();
+            fetchActivities().catch(console.error);
         }
     }, []);
 
@@ -140,8 +140,7 @@ export default function Home() {
 
     const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
-
-    const getIcon = (action) => {
+    const getIcon = (action : any) => {
         switch (action) {
             case 'add':
                 return (
@@ -208,7 +207,7 @@ export default function Home() {
                 setVendors([]);
             }
         }
-        fetchStockData();
+        fetchStockData().catch(console.error);
     }, []);
 
     const handleVendorChange = (event : React.ChangeEvent<HTMLSelectElement>) => {
@@ -262,7 +261,9 @@ export default function Home() {
         .toLowerCase()
         .replace(/\b\w/g, char => char.toUpperCase());
 
-    const statusColors = {
+    type StatusKey = 'Pending' | 'Admin Approved' | 'Admin Disapproved' | 'Needs Editing' | 'Send to Vendor' | 'Quotation Received' | 'Request Successfully';
+
+    const statusColors: Record<StatusKey, string> = {
         Pending: '#f59e0b', // Yellow
         'Admin Approved': '#10b981', // Green
         'Admin Disapproved': '#ef4444', // Red
@@ -270,6 +271,11 @@ export default function Home() {
         'Send to Vendor': '#3b82f6', // Blue
         'Quotation Received': '#9333ea', // Purple
         'Request Successfully': '#22c55e', // Light Green
+    };
+
+    // Usage
+    const getStatusColor = (status: string): string => {
+        return statusColors[status as StatusKey] || '#6b7280'; // Default color if status is not found
     };
 
     // CSS for the blinking circle
@@ -473,26 +479,39 @@ export default function Home() {
                             </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                            {requests.map((request, index) => (
-                                <tr key={index}>
-                                    <td className="text-gray-600 px-6 py-4 whitespace-nowrap">
-                                        <HiOutlineDocumentText className="text-gray-500"/>
-                                    </td>
-                                    <td className="text-gray-600 px-6 py-4 whitespace-nowrap">
-                                        {request.requester}
-                                    </td>
-                                    <td className="text-gray-600 px-6 py-4 whitespace-nowrap">
-                                        {formatDate(request.dateCreated)}
-                                    </td>
-                                    <td
-                                        className="text-gray-600 px-6 py-4 whitespace-nowrap"
-                                        style={{color: statusColors[request.status] || '#6b7280'}} // Default color if status not found
-                                    >
-                                        <span style={circleStyles(statusColors[request.status])}></span>
-                                        {request.status}
+                            {requests.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="text-gray-600 px-6 py-4 whitespace-nowrap">
+                                        No requests available.
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                requests.sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime())
+                                    .slice(0, 5).map((request, index) => (
+                                    <tr key={index} className="cursor-pointer">
+                                        <td className="text-gray-600 px-6 py-4 whitespace-nowrap">
+                                            <HiOutlineDocumentText
+                                                className="text-gray-500 text-xl hover:text-gray-700 transition-colors"/>
+                                        </td>
+                                        <td className="text-gray-600 px-6 py-4 whitespace-nowrap">
+                                            {request.requester}
+                                        </td>
+                                        <td className="text-gray-600 px-6 py-4 whitespace-nowrap">
+                                            {formatDate(request.dateCreated)}
+                                        </td>
+                                        <td className="text-gray-600 px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div
+                                                    style={{ color: getStatusColor(request.status) }}
+                                                    className="rounded-full"
+                                                />
+                                                <span style={circleStyles(getStatusColor(request.status))}></span>
+                                                {request.status}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                             </tbody>
                         </table>
                     </div>

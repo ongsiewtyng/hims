@@ -20,6 +20,11 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const database = getDatabase(app);
 
+// Initialize secondary Firebase app instance
+const secondaryApp = initializeApp(firebaseConfig, "Admin");
+export const secondaryAuth = getAuth(secondaryApp);
+
+
 // Function to get user role from database
 export const getUserRole = async (userId: string): Promise<string> => {
     const userRef = ref(database, `users/${userId}`);

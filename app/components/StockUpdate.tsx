@@ -228,6 +228,7 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
                 }
             }
         });
+        console.log('Item Data:', itemData);
 
         return { items: itemData, totalQuantity };
     };

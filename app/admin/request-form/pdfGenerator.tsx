@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 export const createPdf = async (
-    items: { no: number; item: string; quantity: number; unit: string; sectionA: any }[],
+    items: { no: number; vendor: string; item: string; quantity: number; unit: string; sectionA: any }[],
 ) => {
     // Dynamic page height based on items length and other content
     const initialHeight = 700;
@@ -163,11 +163,12 @@ export const createPdf = async (
     }
 
     // Vertical lines for columns
-    const col2X = tableMarginX + 50;
+    const col2X = tableMarginX + 40;
     const col3X = tableMarginX + 200;
-    const col4X = tableMarginX + 300;
+    const col4X = tableMarginX + 350;
+    const col5X = tableMarginX + 430;
 
-    [col2X, col3X, col4X].forEach(x => {
+    [col2X, col3X, col4X, col5X].forEach(x => {
         page.drawLine({
             start: { x, y: tableStartY },
             end: { x, y: tableStartY - itemTableHeight },
@@ -178,19 +179,19 @@ export const createPdf = async (
 
     // Column headers
     page.drawText('No', { x: tableMarginX + 10, y: tableStartY - 15, size: fontSize, font });
-    page.drawText('Item', { x: col2X + 10, y: tableStartY - 15, size: fontSize, font });
-    page.drawText('Quantity', { x: col3X + 10, y: tableStartY - 15, size: fontSize, font });
-    page.drawText('Unit', { x: col4X + 10, y: tableStartY - 15, size: fontSize, font });
-
-    let yPosition = tableStartY - 35; // Start position for item rows
+    page.drawText('Vendor', { x: col2X + 10, y: tableStartY - 15, size: fontSize, font });
+    page.drawText('Item', { x: col3X + 10, y: tableStartY - 15, size: fontSize, font });
+    page.drawText('Quantity', { x: col4X + 10, y: tableStartY - 15, size: fontSize, font });
+    page.drawText('Unit', { x: col5X + 10, y: tableStartY - 15, size: fontSize, font });
 
     // Populate the item rows
     items.forEach((item, index) => {
         const rowY = tableStartY - 35 - index * 20;
         page.drawText((index + 1).toString(), {x: tableMarginX + 10, y: rowY, size: fontSize, font});
-        page.drawText(item.item, { x: col2X + 10, y: rowY, size: fontSize, font });
-        page.drawText(String(item.quantity), { x: col3X + 10, y: rowY, size: fontSize, font });
-        page.drawText(item.unit, { x: col4X + 10, y: rowY, size: fontSize, font });
+        page.drawText(item.vendor, { x: col2X + 10, y: rowY, size: fontSize, font });
+        page.drawText(item.item, { x: col3X + 10, y: rowY, size: fontSize, font });
+        page.drawText(String(item.quantity), { x: col4X + 10, y: rowY, size: fontSize, font });
+        page.drawText(item.unit, { x: col5X + 10, y: rowY, size: fontSize, font });
     });
 
     // Serialize the PDF document to bytes

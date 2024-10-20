@@ -343,12 +343,21 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                     )}
 
                     {status === 'Send to Vendor' && (
-                        <button
-                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                            onClick={onClose}
-                        >
-                            Close
-                        </button>
+                        <>
+                            <button
+                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                                onClick={() => updateStatus('Quotation Received')}
+                            >
+                                Quotation Received
+                            </button>
+
+                            <button
+                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                                onClick={onClose}
+                            >
+                                Close
+                            </button>
+                        </>
                     )}
 
                     {status === 'Edit Requested' && (

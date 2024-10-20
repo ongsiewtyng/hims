@@ -76,7 +76,13 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
         const storage = getStorage();
 
         for (const file of files) {
-            const storageRef = ref(storage, 'uploads/' + file.name);
+            const timestamp = Date.now();
+            const fileNameParts = file.name.split('.');
+            const fileExtension = fileNameParts.pop();
+            const fileName = fileNameParts.join('.') + `_${timestamp}.${fileExtension}`;
+            console.log(`Uploading ${file.name} as ${fileName}`);
+
+            const storageRef = ref(storage, 'uploads/' + fileName);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
             await new Promise<void>((resolve, reject) => {

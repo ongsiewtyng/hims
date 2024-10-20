@@ -1,7 +1,14 @@
 // components/Sidenav.js
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import {HiOutlineHome, HiOutlineChartBar, HiOutlineShoppingCart, HiOutlineLogout, HiMenu} from 'react-icons/hi';
+import {
+    HiOutlineHome,
+    HiOutlineChartBar,
+    HiOutlineShoppingCart,
+    HiOutlineLogout,
+    HiMenu,
+    HiOutlineUserGroup
+} from 'react-icons/hi';
 
 type SidenavProps = {
     setIsSidenavOpen: (isOpen: boolean) => void;
@@ -22,6 +29,11 @@ const menuItems = [
         name: "Item Request",
         icon: <HiOutlineShoppingCart className="w-8 h-8" />,
         path: '/admin/request-form',
+    },
+    {
+        name: "User Management",
+        icon: <HiOutlineUserGroup className="w-8 h-8" />,
+        path: '/admin/user-management',
     },
     {
         name: "Logout",

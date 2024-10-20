@@ -21,7 +21,6 @@ const UploadItems: React.FC<UploadItemsProps> = ({ onExcelDataChange }) => {
     const [downloadLink, setDownloadLink] = useState<string | null>(null);
 
 
-
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files ? e.target.files[0] : null;
         if (file) {
@@ -62,7 +61,12 @@ const UploadItems: React.FC<UploadItemsProps> = ({ onExcelDataChange }) => {
             setIsUploading(true); // Show loader
             // Create a storage reference
             const storage = getStorage();
-            const storageRef = ref(storage, 'uploads/' + file.name);
+            const timestamp = Date.now();
+            const fileNameParts = file.name.split('.');
+            const fileExtension = fileNameParts.pop();
+            const fileName = fileNameParts.join('.') + `_${timestamp}.${fileExtension}`;
+
+            const storageRef = ref(storage, 'uploads/' + fileName);
 
             // Upload the file
             const uploadTask = uploadBytesResumable(storageRef, file);
@@ -93,7 +97,6 @@ const UploadItems: React.FC<UploadItemsProps> = ({ onExcelDataChange }) => {
                         fetchAndReadFile(downloadURL);
                         setIsFormVisible(false);
                         setIsUploading(false); // Hide loader
-
                     });
                 }
             );

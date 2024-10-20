@@ -1,11 +1,12 @@
 'use client'
 import React, { useState } from 'react';
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { ref, set } from "firebase/database";
+import {equalTo, orderByChild, query, ref, set} from "firebase/database";
 import { useRouter } from "next/navigation";
 import { auth, database } from '../services/firebase';
 import bcrypt from 'bcryptjs';
 import { HiOutlineCheckCircle, HiCheckCircle, HiEye, HiEyeOff, HiXCircle } from "react-icons/hi";
+import {get} from "@firebase/database";
 
 export default function SignUp() {
     const router = useRouter();
@@ -56,31 +57,33 @@ export default function SignUp() {
         setShowPassword(prevShowPassword => !prevShowPassword);
     };
 
-    async function saveUserData(userId: string, email: string, password: string, roles: string){
+    async function saveUserData(userId: string, email: string, password: string, roles: string, superAdmin: boolean) {
         //Hash the password
         const hashPwd = await bcrypt.hash(password,5);
         await set(ref(database, 'users/' + userId), {
             uid: userId,
             email:email,
             password: hashPwd,
-            roles: roles
+            roles: roles,
+            isSuperAdmin: superAdmin,
+            requiredApproval: roles == 'Admin' && !superAdmin
         });
     }
 
-    const handleSignUp = async (e : React.SyntheticEvent) => {
+    const handleSignUp = async (e: React.SyntheticEvent) => {
         e.preventDefault();
 
-        //Validate email
-        if(!email.endsWith('@newinti.edu.my')){
-            setError("Email must ends newinti.edu.my domain.");
+        // Validate email
+        if (!email.endsWith('@newinti.edu.my')) {
+            setError("Email must end with @newinti.edu.my domain.");
             setTimeout(() => {
                 setError(null); // Hide the error message after 3 seconds
             }, 3000);
             return;
         }
 
-        //Validate password
-        if(!requirements.every(req => req.valid)){
+        // Validate password
+        if (!requirements.every(req => req.valid)) {
             setError("Password does not meet the requirements.");
             setTimeout(() => {
                 setError(null); // Hide the error message after 3 seconds
@@ -88,27 +91,35 @@ export default function SignUp() {
             return;
         }
 
-        createUserWithEmailAndPassword(auth,email, password)
-        .then(async (userCredential) => {
-            // Signed in
+        try {
+            // Check if it's the first-ever admin
+            const adminQuery = query(ref(database, 'users'), orderByChild('roles'), equalTo('Admin'));
+            const adminQuerySnapshot = await get(adminQuery);
+            const isFirstAdmin = !adminQuerySnapshot.exists();
+
+            // Create the user
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
-            console.log("User:", user);
 
-            router.push('lecturer/request-form')
+            // Determine if this is the first admin and assign the superAdmin flag
+            const superAdmin = isFirstAdmin;
 
-            //Save data
-            return await saveUserData(user.uid, email, password, roles);
+            // Save the user data with the superAdmin flag
+            await saveUserData(user.uid, email, password, roles, superAdmin);
 
+            console.log("User signed up:", user);
 
-        })
-            .catch((error) => {
-                console.error('Signed up error:', error);
-                setError(error.message);
-
+            if (roles != 'Admin') {
+                alert('Wait for SUPER ADMIN approval');
+            } else {
+                router.push('/lecturer/request-form');
             }
-        );
+        } catch (error) {
+            console.error('Sign-up error:', error);
+            setError(error.message);
+        }
+    };
 
-    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
