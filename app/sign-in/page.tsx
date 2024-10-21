@@ -96,9 +96,6 @@ export default function SignIn() {
         } catch (error) {
             console.error('Sign in error:', error);
             setError('Email or password is incorrect. Please try again.');
-            if (error.code === 'auth/invalid-credential') {
-                setError('User not found. Please sign up.');
-            }
             setTimeout(() => setError(null), 5000);
         }
     };
