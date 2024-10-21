@@ -368,6 +368,25 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                             Approve
                         </button>
                     )}
+
+                    {status === 'Quotation Received' && (
+                        <>
+                            <button
+                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                                onClick={() => updateStatus('Request Successfully')}
+                            >
+                                Request Successfully
+                            </button>
+
+                            <button
+                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                                onClick={onClose}
+                            >
+                                Close
+                            </button>
+                        </>
+                    )}
+
                 </div>
 
                 {/* Reject Modal for Adding Remarks */}
