@@ -108,7 +108,7 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
             });
 
             // Return true if both the week matches and the vendor matches
-            return req.week.toString() === week && vendorMatches;
+            return req.week.toString() === week && vendorMatches && req.status === 'Admin Approved';
         });
 
         // Check if there are no matching requests and alert the user

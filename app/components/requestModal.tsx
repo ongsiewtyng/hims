@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import "../admin/styles/blink.css";
-import {ref, update, onValue} from "@firebase/database";
+import {ref, update, onValue} from "firebase/database";
 import {database} from "../services/firebase";
 import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
 import VendorSelectionModal from "../components/VendorSelection";
