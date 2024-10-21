@@ -50,7 +50,7 @@ export default function SignIn() {
                 console.log('Fetched Role:', role);
 
                 // Redirect based on role
-                if (role === 'Admin') {
+                if (role === 'Super Admin' || 'Admin') {
                     router.push('/admin/home');
                 } else if (role === 'Lecturer') {
                     router.push('/lecturer/request-form');

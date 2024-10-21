@@ -92,24 +92,30 @@ export default function SignUp() {
         }
 
         try {
-            // Check if it's the first-ever admin
-            const adminQuery = query(ref(database, 'users'), orderByChild('roles'), equalTo('Admin'));
-            const adminQuerySnapshot = await get(adminQuery);
-            const isFirstAdmin = !adminQuerySnapshot.exists();
+            // Only apply super admin logic if the selected role is Admin
+            let userRole = roles;
+
+            if (roles === "Admin") {
+                // Check if the users node is empty (first Admin sign-up)
+                const usersRef = ref(database, 'users');
+                const usersSnapshot = await get(usersRef);
+                const isFirstUser = !usersSnapshot.exists();  // Check if there are any users in the database
+
+                // If it's the first Admin, assign them as Super Admin
+                userRole = isFirstUser ? 'Super Admin' : 'Admin';
+            }
 
             // Create the user
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // Determine if this is the first admin and assign the superAdmin flag
-            const superAdmin = isFirstAdmin;
-
-            // Save the user data with the superAdmin flag
-            await saveUserData(user.uid, email, password, roles, superAdmin);
+            // Save the user data
+            await saveUserData(user.uid, email, password, userRole, userRole === 'Super Admin');
 
             console.log("User signed up:", user);
 
-            if (roles != 'Admin') {
+            // Notify based on the role
+            if (roles === 'Lecturer') {
                 alert('Wait for SUPER ADMIN approval');
             } else {
                 router.push('/lecturer/request-form');
@@ -119,6 +125,7 @@ export default function SignUp() {
             setError(error.message);
         }
     };
+
 
 
     return (
