@@ -114,19 +114,17 @@ export default function SignUp() {
 
             console.log("User signed up:", user);
 
-            // Notify based on the role
-            if (roles === 'Lecturer') {
+            // Redirect based on the role
+            if (roles === 'Admin') {
                 alert('Wait for SUPER ADMIN approval');
-            } else {
-                router.push('/lecturer/request-form');
             }
+
+            router.push('/lecturer/request-form');
         } catch (error) {
             console.error('Sign-up error:', error);
             setError(error.message);
         }
     };
-
-
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
