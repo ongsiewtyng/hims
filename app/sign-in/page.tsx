@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { auth,getUserRole } from '../services/firebase';
 import {HiEye, HiEyeOff, HiXCircle} from "react-icons/hi";
 import { setCookie, getCookie } from 'cookies-next';
+import { getDatabase, ref, get } from 'firebase/database';
+import '../components/loader.css';
 
 export default function SignIn() {
     const router = useRouter();
@@ -12,6 +14,7 @@ export default function SignIn() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const interval = setInterval(refreshToken, 5 * 60 * 1000); // Check every 5 minutes
@@ -31,6 +34,25 @@ export default function SignIn() {
         }
     }
 
+    // Function to get user information including role and requiredApproval
+    const getUserDocument = async (uid : any) => {
+        const db = getDatabase(); // Get the database instance
+        const userRef = ref(db, `users/${uid}`); // Reference to the user's node
+
+        try {
+            const snapshot = await get(userRef); // Fetch the data
+            if (snapshot.exists()) {
+                return snapshot.val(); // Return the user data
+            } else {
+                console.error('No user data available');
+                return null; // User data not found
+            }
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+            throw new Error('Could not fetch user data');
+        }
+    };
+
     const handleSignIn = async (e: React.SyntheticEvent) => {
         e.preventDefault();
 
@@ -45,25 +67,41 @@ export default function SignIn() {
                 setCookie('token', token, { maxAge: 60 * 60 * 24 }); // Store for 1 day
                 setCookie('tokenExpiration', expirationTime, { maxAge: 60 * 60 * 24 }); // Store for 1 day
 
-                // Fetch the user's role
-                const role = await getUserRole(user.uid);
-                console.log('Fetched Role:', role);
+                // Fetch the user's role and requiredApproval status
+                const userInfo = await getUserDocument(user.uid); // Fetch user data here
+                console.log('User Info:', userInfo);
+                if (userInfo) {
+                    const { roles, requiredApproval } = userInfo;
 
-                // Redirect based on role
-                if (role === 'Admin') {
-                    router.push('/admin/home');
-                } else if (role === 'Lecturer') {
-                    router.push('/lecturer/request-form');
+                    // Check if approval is required
+                    if (requiredApproval == true) {
+                        setError('Your account requires approval to log in.');
+                        setTimeout(() => setError(null), 5000);
+                        return; // Prevent login
+                    } else {
+                        // Redirect based on role
+                        if (roles === 'Admin') {
+                            router.push('/admin/home');
+                        } else if (roles === 'Lecturer') {
+                            router.push('/lecturer/request-form');
+                        } else {
+                            router.push('/sign-in');
+                        }
+                    }
                 } else {
-                    router.push('/sign-in');
+                    setError('User data could not be retrieved.');
+                    setTimeout(() => setError(null), 5000);
                 }
             }
         } catch (error) {
             console.error('Sign in error:', error);
             setError('Email or password is incorrect. Please try again.');
+            if (error.code === 'auth/invalid-credential') {
+                setError('User not found. Please sign up.');
+            }
             setTimeout(() => setError(null), 5000);
         }
-    }
+    };
 
     const toggleShowPassword = () => {
         setShowPassword(prevShowPassword => !prevShowPassword);
@@ -118,9 +156,13 @@ export default function SignIn() {
                     <div>
                         <button
                             type="submit"
-                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            className="relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         >
-                            Login
+                            {loading ? ( // Use your loader class here
+                                <div className="loader"></div>
+                            ) : (
+                                "Login"
+                            )}
                         </button>
                     </div>
                     {error && (
@@ -133,7 +175,7 @@ export default function SignIn() {
 
                     <p className="mt-4 text-center text-sm text-gray-600">
                         <a href="/sign-up" className="font-medium text-indigo-600 hover:text-indigo-500">Create
-                        an account?</a>
+                            an account?</a>
                     </p>
 
                     <p className="mt-2 text-center text-sm text-gray-600">

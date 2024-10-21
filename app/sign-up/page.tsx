@@ -1,13 +1,12 @@
 'use client'
 import React, { useState } from 'react';
 import {createUserWithEmailAndPassword, signInWithEmailAndPassword} from "firebase/auth";
-import {equalTo, orderByChild, query, ref, set} from "firebase/database";
+import { ref, set } from "firebase/database";
 import { useRouter } from "next/navigation";
 import {auth, database, getUserRole} from '../services/firebase';
 import bcrypt from 'bcryptjs';
 import { HiOutlineCheckCircle, HiCheckCircle, HiEye, HiEyeOff, HiXCircle } from "react-icons/hi";
 import {get} from "@firebase/database";
-import SignIn from "../sign-in/page";
 import {setCookie} from "cookies-next";
 
 
@@ -119,6 +118,7 @@ export default function SignUp() {
             // Redirect based on the role
             if (!isFirstUser && roles === 'Admin') {
                 alert('Wait for SUPER ADMIN approval');
+                router.push('/sign-in');
             } else {
                 try {
                     const userCredential = await signInWithEmailAndPassword(auth, email, password);
