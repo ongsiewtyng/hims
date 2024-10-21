@@ -1,12 +1,15 @@
 'use client'
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import {createUserWithEmailAndPassword, signInWithEmailAndPassword} from "firebase/auth";
 import {equalTo, orderByChild, query, ref, set} from "firebase/database";
 import { useRouter } from "next/navigation";
-import { auth, database } from '../services/firebase';
+import {auth, database, getUserRole} from '../services/firebase';
 import bcrypt from 'bcryptjs';
 import { HiOutlineCheckCircle, HiCheckCircle, HiEye, HiEyeOff, HiXCircle } from "react-icons/hi";
 import {get} from "@firebase/database";
+import SignIn from "../sign-in/page";
+import {setCookie} from "cookies-next";
+
 
 export default function SignUp() {
     const router = useRouter();
@@ -94,15 +97,14 @@ export default function SignUp() {
         try {
             // Only apply super admin logic if the selected role is Admin
             let userRole = roles;
+            let isFirstUser = false;
 
             if (roles === "Admin") {
                 // Check if the users node is empty (first Admin sign-up)
                 const usersRef = ref(database, 'users');
                 const usersSnapshot = await get(usersRef);
-                const isFirstUser = !usersSnapshot.exists();  // Check if there are any users in the database
+                isFirstUser = !usersSnapshot.exists();  // Check if there are any users in the database
 
-                // If it's the first Admin, assign them as Super Admin
-                userRole = isFirstUser ? 'Super Admin' : 'Admin';
             }
 
             // Create the user
@@ -110,13 +112,43 @@ export default function SignUp() {
             const user = userCredential.user;
 
             // Save the user data
-            await saveUserData(user.uid, email, password, userRole, userRole === 'Super Admin');
+            await saveUserData(user.uid, email, password, userRole, isFirstUser);
 
             console.log("User signed up:", user);
 
             // Redirect based on the role
-            if (roles === 'Admin') {
+            if (!isFirstUser && roles === 'Admin') {
                 alert('Wait for SUPER ADMIN approval');
+            } else {
+                try {
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    const user = userCredential.user;
+
+                    if (user) {
+                        // Get the user's ID token and store it in a cookie
+                        const token = await user.getIdToken();
+                        const expirationTime = new Date().getTime() + 3600 * 1000; // 1 hour from now
+                        setCookie('token', token, { maxAge: 60 * 60 * 24 }); // Store for 1 day
+                        setCookie('tokenExpiration', expirationTime, { maxAge: 60 * 60 * 24 }); // Store for 1 day
+
+                        // Fetch the user's role
+                        const role = await getUserRole(user.uid);
+                        console.log('Fetched Role:', role);
+
+                        // Redirect based on role
+                        if (role === 'Admin') {
+                            router.push('/admin/home');
+                        } else if (role === 'Lecturer') {
+                            router.push('/lecturer/request-form');
+                        } else {
+                            router.push('/sign-in');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Sign in error:', error);
+                    setError('Email or password is incorrect. Please try again.');
+                    setTimeout(() => setError(null), 5000);
+                }
             }
 
             router.push('/lecturer/request-form');
