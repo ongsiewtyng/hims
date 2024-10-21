@@ -150,8 +150,6 @@ export default function SignUp() {
                     setTimeout(() => setError(null), 5000);
                 }
             }
-
-            router.push('/lecturer/request-form');
         } catch (error) {
             console.error('Sign-up error:', error);
             setError(error.message);
