@@ -1,6 +1,5 @@
 import nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
-import { createPdf } from '../../admin/request-form/pdfGenerator'; // Your PDF generator
 
 export async function POST(request: Request) {
     console.log('Received request');
