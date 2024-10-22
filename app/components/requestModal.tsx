@@ -3,7 +3,6 @@ import "../admin/styles/blink.css";
 import {ref, update, onValue} from "firebase/database";
 import {database} from "../services/firebase";
 import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
-import VendorSelectionModal from "../components/VendorSelection";
 
 interface Vendor {
     id: string;
@@ -447,17 +446,6 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                         </div>
                     </div>
                 )}
-
-
-                {/*/!* Vendor Selection Modal *!/*/}
-                {/*{showVendorModal && (*/}
-                {/*    <VendorSelectionModal*/}
-                {/*        isOpen={showVendorModal}*/}
-                {/*        onClose={() => setShowVendorModal(false)}*/}
-                {/*        fileUrl={selectedFileUrl}*/}
-                {/*        vendors={vendors}// Pass the list of vendors here*/}
-                {/*    />*/}
-                {/*)}*/}
 
             </div>
             {/* Notification Bar */}

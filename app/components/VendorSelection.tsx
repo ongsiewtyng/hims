@@ -134,7 +134,6 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
             }
         }));
 
-        console.log("Selected Week:", week, "Preview URL:", selectedPreviews[selectedVendor.id]?.[week]);
         console.log("Requests to be previewed/downloaded:", matchingRequestsForVendorAndWeek);
     };
 
@@ -176,7 +175,6 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
 
     const fetchItems = async (week: string): Promise<any[]> => {
         try {
-            console.log("Hello")
             const requestsRef = ref(database, 'requests');
             const snapshot = await get(requestsRef);
             const data = snapshot.val();
@@ -229,18 +227,18 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
             // Ensure qty is treated as a number
             const qty = parseFloat(cur.qty) || 0;
 
-            // Group by item, and optionally by vendor if it's needed
+            // Check if the item already exists in the accumulator
             if (!acc[cur.item]) {
                 acc[cur.item] = {
                     item: cur.item,
-                    qty: 0,
+                    qty: 0, // Initialize quantity to 0
                     sectionA: cur.sectionA,
                     unit: cur.unit,
-                    vendor: cur.vendor || 'Unknown' // Adding vendor field
+                    vendor: cur.vendor || 'Unknown' // Include vendor field
                 };
             }
 
-            // Add the quantity
+            // Add the quantity for the existing item
             acc[cur.item].qty += qty;
 
             return acc;
@@ -249,6 +247,7 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
         // Convert the grouped object back to an array
         return Object.values(groupedItems);
     };
+
 
 
     const generatePdfPreview = async (request: Request, action: 'preview' | 'download' = 'preview') => {
@@ -314,6 +313,8 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
         setError(null);
         setSuccess(null);
 
+        let emailSent = false; // Track if any email was successfully sent
+
         // Iterate over each vendor in weekSelections
         for (const vendorId of Object.keys(weekSelections)) {
             const vendor = vendors.find((v) => v.id === vendorId);
@@ -327,65 +328,95 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
                 continue;
             }
 
-            for (const weekSelection of selectedWeeks) {
-                const { week, pdfFileName } = weekSelection;
+            // Array to hold items for all selected weeks for this vendor
+            let allItemsForVendor: any[] = [];
 
-                console.log('Sending email to:', vendor.name, 'for week:', week);
+            for (const weekSelection of selectedWeeks) {
+                const { week } = weekSelection;
+
+                console.log('Fetching items for vendor:', vendor.name, 'week:', week);
 
                 try {
-                    // Fetch only the items corresponding to the selected week
+                    // Fetch items for the current week
                     const items = await fetchItems(week);
-                    console.log('Items:', items);
+
+                    console.log('Items for week:', week, items);
                     if (items.length === 0) {
                         setError(`No items found for week ${week}`);
                         continue;
                     }
 
-                    const groupedItems = groupItems(items);
-                    const mappedItems = groupedItems.map(item => ({
-                        ...item,
-                        quantity: item.qty,
-                        sectionA: item.sectionA,
-                        unit: item.unit,
-                        vendor: item.vendor,
-                    }));
-
-                    // Generate PDF
-                    const { pdfBytes } = await createPdf(mappedItems);
-
-                    if (!(pdfBytes instanceof Uint8Array || Buffer.isBuffer(pdfBytes))) {
-                        throw new Error('Invalid PDF data type, must be Uint8Array or Buffer');
-                    }
-
-                    const pdfBuffer = Buffer.from(pdfBytes);
-
-                    //Send the email
-                    const response = await fetch('/api/sendEmail', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            recipient: vendor.email,
-                            items: mappedItems,
-                            pdfBuffer,
-                            pdfFileName: pdfFileName || generatePdfFileName(week, vendor.name),
-                        }),
-                    });
-
-                    if (response.ok) {
-                        setSuccess(`Email sent successfully to ${vendor.name} for week ${week}`);
-                        await updateRequestStatus(week); // Update the status for the specific week
-                    } else {
-                        const errorData = await response.json();
-                        console.error('Failed to send email:', errorData.error);
-                        setError('Failed to send email: ' + errorData.error);
-                    }
+                    // Add the fetched items to the total list for the vendor
+                    allItemsForVendor.push(...items);
                 } catch (error) {
-                    console.error('Error sending email:', error);
-                    setError('Error sending email');
+                    console.error('Error fetching items for week:', week, error);
+                    setError(`Error fetching items for week ${week}`);
+                    continue;
                 }
             }
+
+            // Group items by name to sum the quantities after all weeks are fetched
+            const groupedItems = groupItems(allItemsForVendor);
+
+            if (groupedItems.length === 0) {
+                setError(`No items found for vendor ${vendor.name} in the selected weeks`);
+                continue;
+            }
+
+            console.log('Grouped Items:', groupedItems);
+
+            try {
+                // Generate PDF with grouped items
+                const { pdfBytes } = await createPdf(groupedItems);
+
+                if (!(pdfBytes instanceof Uint8Array || Buffer.isBuffer(pdfBytes))) {
+                    throw new Error('Invalid PDF data type, must be Uint8Array or Buffer');
+                }
+
+                const pdfBuffer = Buffer.from(pdfBytes);
+
+                // Send the email
+                const pdfFileName = generatePdfFileName(selectedWeeks.map(w => w.week).join('_'), vendor.name);
+                const response = await fetch('/api/sendEmail', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        recipient: vendor.email,
+                        items: groupedItems,
+                        pdfBuffer,
+                        pdfFileName,
+                    }),
+                });
+
+                if (response.ok) {
+                    setSuccess(`Email sent successfully to ${vendor.name} for ${selectedWeeks.map(w => `Week ${w.week}`).join(', ')}`);
+                    emailSent = true; // Mark that at least one email was sent
+
+                    // Update the status for all selected weeks
+                    await Promise.all(
+                        selectedWeeks.map(async (weekSelection) => {
+                            const { week } = weekSelection;
+                            await updateRequestStatus(week); // Update the status for each week
+                        })
+                    );
+                } else {
+                    const errorData = await response.json();
+                    console.error('Failed to send email:', errorData.error);
+                    setError('Failed to send email: ' + errorData.error);
+                }
+            } catch (error) {
+                console.error('Error sending email:', error);
+                setError('Error sending email');
+            }
+        }
+
+        // Close the modal after a delay if at least one email was sent
+        if (emailSent) {
+            setTimeout(() => {
+                onClose(); // Close the modal
+            }, 3000); // Adjust the time as needed
         }
 
         // Reset after all emails are sent
@@ -393,6 +424,7 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
         setWeekSelections({});
         setSending(false);
     };
+
 
     // Function to update the status in Firebase Realtime Database
     const updateRequestStatus = async (week: string) => {

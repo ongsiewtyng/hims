@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 export const createPdf = async (
-    items: { no: number; vendor: string; item: string; quantity: number; unit: string; sectionA: any }[],
+    items: { no: number; vendor: string; item: string; qty: number; unit: string; sectionA: any }[],
 ) => {
     // Dynamic page height based on items length and other content
     const initialHeight = 700;
@@ -190,7 +190,7 @@ export const createPdf = async (
         page.drawText((index + 1).toString(), {x: tableMarginX + 10, y: rowY, size: fontSize, font});
         page.drawText(item.vendor, { x: col2X + 10, y: rowY, size: fontSize, font });
         page.drawText(item.item, { x: col3X + 10, y: rowY, size: fontSize, font });
-        page.drawText(String(item.quantity), { x: col4X + 10, y: rowY, size: fontSize, font });
+        page.drawText(String(item.qty), { x: col4X + 10, y: rowY, size: fontSize, font });
         page.drawText(item.unit, { x: col5X + 10, y: rowY, size: fontSize, font });
     });
 
