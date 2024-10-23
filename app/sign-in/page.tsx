@@ -1,6 +1,6 @@
 'use client'
 import React, {useEffect, useState} from 'react';
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {fetchSignInMethodsForEmail, signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from 'next/navigation';
 import { auth,getUserRole } from '../services/firebase';
 import {HiEye, HiEyeOff, HiXCircle} from "react-icons/hi";
@@ -59,6 +59,14 @@ export default function SignIn() {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
+
+            // Check if the email exists
+            const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+            if (signInMethods.length === 0) {
+                setError('Email does not exist. Please sign up.');
+                setTimeout(() => setError(null), 5000);
+                return;
+            }
 
             if (user) {
                 // Get the user's ID token and store it in a cookie
