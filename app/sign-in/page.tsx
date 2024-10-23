@@ -57,9 +57,6 @@ export default function SignIn() {
         e.preventDefault();
 
         try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-
             // Check if the email exists
             const signInMethods = await fetchSignInMethodsForEmail(auth, email);
             if (signInMethods.length === 0) {
@@ -67,6 +64,10 @@ export default function SignIn() {
                 setTimeout(() => setError(null), 5000);
                 return;
             }
+
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
 
             if (user) {
                 // Get the user's ID token and store it in a cookie
