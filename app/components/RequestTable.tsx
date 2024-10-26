@@ -76,9 +76,11 @@ const ProgressTracker = () => {
                     excelData: data[key].excelData || [],
                     sectionA: data[key].sectionA || [],
                     requestId: key,
-                    week: data[key].week
+                    week: data[key].week,
+                    userID: data[key].userID || null
                 }));
                 setRequests(formattedData);
+                console.log('Requests:', formattedData);
             } else {
                 setRequests([]); // Handle case where there is no data
             }

@@ -30,6 +30,7 @@ interface Request {
     excelData: any[];
     sectionA: any[];
     requestId: string;
+    userID: string;
 }
 
 const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onClose, fileUrl, vendors }) => {
@@ -427,16 +428,16 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
 
 
     // Function to update the status in Firebase Realtime Database
-    const updateRequestStatus = async (week: string) => {
+    const updateRequestStatus = async (week) => {
         try {
-            console.log("hello")
+            console.log("Starting status update process");
+
             // Reference to the requests in the Firebase Realtime Database
             const requestsRef = ref(database, 'requests');
             const snapshot = await get(requestsRef);
 
             if (snapshot.exists()) {
                 let data = snapshot.val();
-                //data.requestId = snapshot.key;
 
                 // Iterate over all requests
                 for (const requestId in data) {
@@ -447,8 +448,43 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
                     if (requestData.status === 'Admin Approved' && requestData.week == week) {
                         // Update the status to "Send to Vendor"
                         const requestRef = ref(database, `requests/${requestId}`);
+
                         await update(requestRef, { status: 'Send to Vendor' });
                         console.log(`Status for request ${requestId} updated to: Send to Vendor`);
+
+                        // Fetch the user's email using the userID
+                        const userRef = ref(database, `users/${requestData.userID}`);
+                        const userSnapshot = await get(userRef);
+
+                        if (userSnapshot.exists()) {
+                            const userData = userSnapshot.val();
+                            const recipientEmail = userData.email; // Assume 'email' field holds the user's email
+
+                            // Set up email parameters
+                            const emailData = {
+                                recipient: recipientEmail,
+                                status: 'Send to Vendor',
+                                requestInfo: requestData.excelData || [] // Adjust to the field with request details
+                            };
+
+                            // Send an email notification
+                            const response = await fetch('/api/sendNotifications', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(emailData)
+                            });
+
+                            // Check the response
+                            if (response.ok) {
+                                console.log(`Email sent successfully to ${recipientEmail}`);
+                            } else {
+                                console.error('Failed to send email:', await response.json());
+                            }
+                        } else {
+                            console.error(`User data not found for userID: ${requestData.userID}`);
+                        }
                     }
                 }
             } else {

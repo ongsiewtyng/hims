@@ -23,6 +23,7 @@ interface RequestModalProps {
         excelData?: { [key: string]: string }[]; // Assuming excelData is an array of objects with string key-value pairs
         sectionA?: string[][];
         requestId: string;
+        userID: string;
     } | null;
 }
 
@@ -60,7 +61,6 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
     const [selectedFileUrl, setSelectedFileUrl] = useState(''); // URL of the file to send
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
-    const [showVendorModal, setShowVendorModal] = useState(false);
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [status, setStatus] = useState<string>(request?.status || 'Unknown');
 
@@ -105,7 +105,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
     };
 
     const updateStatus = (status: string, remark = ""): Promise<void> => {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             if (!request || !request.requestId) {
                 console.error("Invalid request data");
                 reject("Invalid request data");
@@ -113,26 +113,80 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
             }
 
             const requestRef = ref(database, `requests/${request.requestId}`);
+            const userRef = ref(database, `users/${request.userID}`);
 
-            console.log("Updating status with:", { status, remark, requestId: request.requestId });
+            // Fetch user data to get the email
+            onValue(userRef, async (snapshot) => {
+                const userData = snapshot.val();
+                if (!userData || !userData.email) {
+                    console.error("User data not found or email missing");
+                    reject("User data not found or email missing");
+                    return;
+                }
 
-            // Avoid re-triggering if status is the same
-            if (request.status === status && remark === "") {
-                console.log("Status is already the same, no update needed.");
-                resolve();
-                return;
-            }
+                const userEmail = userData.email;
 
-            // Perform the update operation
-            update(requestRef, {
-                status: status,
-                remark: remark,
-            }).then(() => {
-                console.log("Status updated successfully");
-                resolve();
-            }).catch((error) => {
-                console.error("Error updating status:", error);
-                reject(error);
+                console.log("Updating status with:", { status, remark, requestId: request.requestId, userEmail });
+
+                try {
+                    // Avoid re-triggering if status is the same
+                    if (request.status === status && remark === "") {
+                        console.log("Status is already the same, no update needed.");
+                        setError("Status is already the same, no update needed.");
+                        setTimeout(() => {
+                            setError(null);
+                        }, 3000);
+                        resolve();
+                        return;
+                    }
+
+                    // Update the request status and remark
+                    await update(requestRef, { status, remark });
+                    console.log("Status updated successfully");
+                    setSuccess("Status updated successfully");
+                    setTimeout(() => {
+                        setSuccess(null);
+                    }, 3000);
+
+                    // Log the data being sent
+                    console.log("Sending email notification with data:", {
+                        recipient: userEmail,
+                        status,
+                        requestInfo: request?.excelData || [],
+                    });
+
+                    // Send email notification to the user
+                    const response = await fetch('/api/sendNotifications', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            recipient: userEmail,
+                            status,
+                            requestInfo: request.excelData || [],
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        console.error("Failed to send email notification:", response.statusText);
+                        setError("Failed to send email notification");
+                        setTimeout(() => {
+                            setError(null);
+                        }, 3000);
+                        reject(response.statusText);
+                    } else {
+                        resolve();
+                    }
+
+                } catch (error) {
+                    console.error("Failed to update status:", error);
+                    setError("Failed to update status");
+                    setTimeout(() => {
+                        setError(null);
+                    }, 3000);
+                    reject(error);
+                }
             });
         });
     };
