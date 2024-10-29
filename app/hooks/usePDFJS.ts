@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import * as PDFJS from "pdfjs-dist/types/src/pdf";
+import '@ungap/with-resolvers';
 
 export const usePDFJS = (
     onLoad: (pdfjs: typeof PDFJS) => Promise<void>,

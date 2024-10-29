@@ -180,7 +180,7 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
                         // Step 4: Check if the description matches the food item name in the database
                         if (foodItemData.foodName === item.description) {
                             const currentStock = parseInt(foodItemData.stocks, 10);
-                            const newStock = currentStock - item.quantity;
+                            const newStock = currentStock + item.quantity;
 
                             // Update stocks in Firebase
                             const foodItemRef = databaseRef(db, `foodItems/${childSnapshot.key}`);
