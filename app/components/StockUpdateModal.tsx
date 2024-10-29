@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {HiCheckCircle, HiTrash, HiXCircle} from 'react-icons/hi';
-import { database, storage } from '../services/firebase'; // Ensure this is set up correctly
+import { database } from '../services/firebase'; // Ensure this is set up correctly
 import {ref, onValue, update, ref as databaseRef} from '@firebase/database';
 import StockUpdate from "./StockUpdate";
 import {get, getDatabase} from "firebase/database";

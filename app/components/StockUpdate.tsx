@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { usePDFJS } from '../hooks/usePDFJS';
-import { HiOutlineDocumentAdd, HiTrash } from 'react-icons/hi';
+import { HiOutlineDocumentAdd } from 'react-icons/hi';
 import * as pdfjsLib from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
 
