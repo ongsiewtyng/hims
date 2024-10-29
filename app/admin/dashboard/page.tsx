@@ -2,7 +2,7 @@
 import React, {useEffect, useState} from 'react';
 import Table from "../../components/Table";
 import {database} from "../../services/firebase";
-import {get, onValue, push, ref, set, update} from "@firebase/database";
+import {get, onValue, push, ref, set, update} from "firebase/database";
 import Sidenav from "../../components/Sidenav";
 import {
     HiCheckCircle,
@@ -59,10 +59,6 @@ export default function Dashboard() {
     const [error, setError] = useState<string | null>(null);
     const [isSidenavOpen, setIsSidenavOpen] = useState(false);
 
-    const [uploadedData, setUploadedData] = useState<any>({header: [], data: []});
-    const [headers, setHeaders] = useState<string[]>([]);
-    const [extractedValues, setExtractedValues] = useState<string[]>([]);
-    const [showExcelData, setShowExcelData] = useState(false);
 
     const addActivity = async (action: string, item: any) => {
         try {

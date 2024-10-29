@@ -4,8 +4,8 @@ import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/
 import { usePDFJS } from '../hooks/usePDFJS';
 import { HiOutlineDocumentAdd } from 'react-icons/hi';
 import * as pdfjsLib from 'pdfjs-dist';
+//import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 import Tesseract from 'tesseract.js';
-
 
 type StockUpdateProps = {
     onPDFDataChange: (

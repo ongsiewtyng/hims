@@ -204,7 +204,7 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
                 console.error("Error updating stock for item:", item.description, error);
             }
         }
-        setError("Stock update process completed.");
+        setError("Stock update process successfully.");
         console.log("Stock update process completed.");
         setTimeout(() => {
             setStockUpdateModal(false);
