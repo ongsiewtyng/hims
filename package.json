@@ -16,7 +16,7 @@
     "chartjs-plugin-datalabels": "^2.2.0",
     "cookies-next": "^4.3.0",
     "cors": "^2.8.5",
-    "firebase": "^10.11.0",
+    "firebase": "^11.0.1",
     "firebase-admin": "^11.11.1",
     "firebase-functions": "^5.0.1",
     "flipdown": "^0.3.2",
