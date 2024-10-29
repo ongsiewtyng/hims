@@ -11,14 +11,10 @@ type UploadItemsProps = {
 
 const UploadItems: React.FC<UploadItemsProps> = ({ onExcelDataChange }) => {
     const [message, setMessage] = useState('No Files Selected');
-    //const [excelData, setExcelData] = useState<any[]>([]);
     const [isFormVisible, setIsFormVisible] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
     const [previousExcelData, setPreviousExcelData] = useState<any[]>([]);
-    const [header, setHeader] = useState<string[]>([]);
     const [data, setData] = useState<any[]>([]);
-    const [sectionA, setSectionA] = useState<any[]>([]);
-    const [downloadLink, setDownloadLink] = useState<string | null>(null);
 
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

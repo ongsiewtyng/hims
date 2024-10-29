@@ -123,8 +123,8 @@ const UploadItemsModal: React.FC<UploadItemsModalProps> = ({ uploadItemsModal, s
                 }
 
                 for (const item of vendorData) {
-                    const foodName = item["Description of Item "]?.trim();
-                    const unit = item["UOM (Unit, KG, Month, Job)"]?.trim()?.toLowerCase() || "nos";
+                    const foodName = item["Items"]?.trim();
+                    const unit = item["Unit"]?.trim()?.toLowerCase() || "nos";
                     const stocks = item["Quantity Left"] || "0";
 
                     if (foodName && unit) {

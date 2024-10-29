@@ -1,9 +1,8 @@
-"use client";
-import React, { useState, useEffect } from 'react';
+'use client'
+import React, { useState } from 'react';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import * as XLSX from 'xlsx';
-import {usePDFJS} from "../hooks/usePDFJS";
-import { HiOutlineDocumentAdd } from "react-icons/hi";
+import { usePDFJS } from '../hooks/usePDFJS';
+import { HiOutlineDocumentAdd, HiTrash } from 'react-icons/hi';
 import * as pdfjsLib from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
 
@@ -12,19 +11,16 @@ type StockUpdateProps = {
     onPDFDataChange: (
         extractedValues: { itemNo: number; description: string; quantity: number }[]
     ) => void;
-}
+};
 
 const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
     const [message, setMessage] = useState('No Files Selected');
     const [isFormVisible, setIsFormVisible] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
-    const [previousExcelData, setPreviousExcelData] = useState<any[]>([]);
-    const [header, setHeader] = useState<string[]>([]);
-    const [data, setData] = useState<any[]>([]);
-    const [sectionA, setSectionA] = useState<any[]>([]);
+    const [extractedData, setExtractedData] = useState<{ itemNo: number; description: string; quantity: number; unit: string | null }[]>([]);
+    const [editValues, setEditValues] = useState<{ itemNo: number; description: string; quantity: number; unit: string | null }[]>([]);
     const [downloadLink, setDownloadLink] = useState<string | null>(null);
 
-    // Hook to handle PDF processing
     usePDFJS(async (pdfjs) => {
         if (downloadLink) {
             const loadingTask = pdfjs.getDocument(downloadLink);
@@ -76,7 +72,7 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
         const uploadFileElement = document.getElementById('upload-file') as HTMLInputElement;
         const file = uploadFileElement.files ? uploadFileElement.files[0] : null;
         if (file) {
-            setIsUploading(true); // Show loader
+            setIsUploading(true);
             const storage = getStorage();
             const storageRef = ref(storage, 'uploads/' + file.name);
 
@@ -95,7 +91,7 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
                         console.log('File available at', downloadURL);
                         fetchAndReadPDFFile(downloadURL);
                         setIsFormVisible(false);
-                        setIsUploading(false); // Hide loader
+                        setIsUploading(false);
                     });
                 }
             );
@@ -104,54 +100,38 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
         }
     };
 
-
     const fetchAndReadPDFFile = async (downloadURL: string) => {
         try {
-            // Fetch the PDF file from the download URL
             const response = await fetch(downloadURL);
             if (!response.ok) throw new Error('Network response was not ok');
-
-            // Convert the response to an ArrayBuffer
             const arrayBuffer = await response.arrayBuffer();
-
-            // Load the PDF document
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             const numPages = pdf.numPages;
 
             let textContent: string[] = [];
 
-            // Helper function to handle OCR on a canvas blob
             const performOCR = (blob: Blob): Promise<string> => {
                 return new Promise((resolve, reject) => {
-                    if (!blob) reject('Blob is empty');
-
-                    // Perform OCR using Tesseract.js
-                    Tesseract.recognize(
-                        blob,
-                        'eng', // Language
-                        { logger: info => console.log(info) } // Optional logger
-                    )
+                    Tesseract.recognize(blob, 'eng', {
+                        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz*',
+                        logger: info => console.log(info)
+                    })
                         .then(({ data: { text } }) => resolve(text))
                         .catch(err => reject(err));
                 });
             };
 
-            // Process each page
             for (let i = 1; i <= numPages; i++) {
                 const page = await pdf.getPage(i);
-
-                // Render page to canvas
-                const viewport = page.getViewport({ scale: 1.5 });
+                const viewport = page.getViewport({ scale: 2 });
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 if (!context) throw new Error('Failed to get canvas context');
 
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
-
                 await page.render({ canvasContext: context, viewport }).promise;
 
-                // Convert canvas to Blob and perform OCR
                 const ocrText = await new Promise<string>((resolve, reject) => {
                     canvas.toBlob(async (blob) => {
                         if (blob) {
@@ -170,88 +150,43 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
                 textContent.push(ocrText);
             }
 
-            // Join all page texts for overall content
             const fullText = textContent.join('\n');
             console.log('OCR text content:', fullText);
 
-            // Extract specific information: No, Item, and Quantity
-            const extractedData = extractItemData(fullText);
-            console.log('Extracted Data:', extractedData);
-            onPDFDataChange(extractedData.items);
+            const regex = /(\d+)\s+([A-Z0-9]+)\s+(.+?)\s+(\d+)\s+(\d+[A-Z]+)/g;
+            const items = [];
+            let match;
 
+            while ((match = regex.exec(fullText)) !== null) {
+                const item = {
+                    itemNo: items.length + 1,
+                    description: match[3].trim(),
+                    quantity: match[4].trim(),
+                    unit: match[5].trim()
+                };
+                items.push(item);
+            }
+
+            console.log('Extracted Items:', items);
+
+            onPDFDataChange(items);
+            setExtractedData(items);
+            setEditValues(items);
+            setIsFormVisible(false);
 
         } catch (error) {
             console.error('PDF processing error:', error);
         }
     };
 
-    // Function to extract item descriptions and quantities
-    const extractItemData = (text: string) => {
-        const lines = text.split('\n');
-        const itemData = [];
-        let totalQuantity = 0;
-        let itemNo = 1;
-
-        // Regex to match item lines
-        const itemRegex = /^\s*(\d+)\s+([\w\s\/().,-]+?)\s+(\d+)\s*(KG|GM|PC|BTL|L)?$/i;
-
-        lines.forEach(line => {
-            const match = line.match(itemRegex);
-            if (match) {
-                const [, , description, quantity, , unit] = match;
-                const quantityNum = parseFloat(quantity.replace(',', '')); // Remove any commas from quantity
-
-                // Clean the description by trimming off extra details
-                const cleanedDescription = description.replace(/(\d+)\s*([KG|GM|PC|BTL|L])/gi, '').trim(); // Remove any units or numbers after description
-                totalQuantity += quantityNum;
-
-                itemData.push({
-                    itemNo: itemNo++,
-                    description: cleanedDescription, // Only the cleaned description
-                    quantity: quantityNum,
-                    unit: unit ? unit.trim(): 'PC'
-                });
-            } else {
-                // Handle lines that might not match the expected format
-                const parts = line.split(/(\d+)/).filter(Boolean);
-                if (parts.length >= 2) {
-                    const quantity = parseFloat(parts[0].replace(',', '')); // First part as quantity
-                    const description = parts.slice(1).join(' ').trim(); // Rest as description
-
-                    itemData.push({
-                        itemNo: itemNo++,
-                        description: description.replace(/(\d+)\s*(KG|GM|PC|BTL|L)/gi, '').trim(), // Clean the description
-                        quantity: quantity,
-                        unit: null
-                    });
-                    totalQuantity += quantity;
-                }
-            }
-        });
-        console.log('Item Data:', itemData);
-
-        return { items: itemData, totalQuantity };
-    };
-
-
-    // Hook to detect changes in data for comparison
-    useEffect(() => {
-        if (JSON.stringify(data) !== JSON.stringify(previousExcelData)) {
-            setPreviousExcelData(data);
-        }
-    }, [data, previousExcelData]);
-
-
     return (
         <div className="relative flex flex-col max-w-xl w-full mt-4 mx-auto">
-            {/* Form */}
             {isFormVisible && (
                 <form
-                    className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col max-w-xl w-full relative mx-auto"
+                    className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col w-full relative mx-auto"
                     onSubmit={handleSubmit}
                     onReset={handleReset}
                 >
-                    {/* Loader */}
                     {isUploading && (
                         <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-10">
                             <div className="loader"></div>
@@ -267,7 +202,7 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
                         onDrop={handleDrop}
                     >
                         <div className="text-stone-950 file-upload-icon mb-2">
-                            <HiOutlineDocumentAdd size={60}/>
+                            <HiOutlineDocumentAdd size={60} />
                         </div>
                         <p className="text-black text-sm text-center">Click to upload or drag and drop</p>
                         <input
@@ -281,7 +216,6 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
                         <p className="text-black message">{message}</p>
                     </div>
                     <div className="flex justify-between pt-6 mt-6 border-t border-gray-300 gap-4 flex-wrap">
-
                         <button
                             id="submit-button"
                             type="submit"
@@ -293,7 +227,7 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
                 </form>
             )}
         </div>
-    );
-}
+    )
+};
 
 export default StockUpdate;
