@@ -180,6 +180,13 @@ export default function Home() {
         return new Date(date).toLocaleString('en-US', options);
     };
 
+    const handleVendorChange = (event : React.ChangeEvent<HTMLSelectElement>) => {
+        const { value } = event.target;
+        setSelectedVendor(value);
+        const filtered = value === '' ? stockData : stockData.filter(stock => stock.vendor === value);
+        setFilteredStockData(filtered);
+    };
+
     useEffect(() => {
         async function fetchStockData() {
             const db = getDatabase();
@@ -197,9 +204,8 @@ export default function Home() {
                 setStockData(filteredItems);
                 setFilteredStockData(filteredItems);
 
-                // Extract unique vendors
                 const uniqueVendorsSet = new Set(filteredItems.map(item => item.vendor));
-                const uniqueVendors = Array.from(uniqueVendorsSet); // Convert Set to Array
+                const uniqueVendors = Array.from(uniqueVendorsSet);
                 setVendors(uniqueVendors);
             } else {
                 setStockData([]);
@@ -210,22 +216,24 @@ export default function Home() {
         fetchStockData().catch(console.error);
     }, []);
 
-    const handleVendorChange = (event : React.ChangeEvent<HTMLSelectElement>) => {
-        const { value } = event.target;
-        setSelectedVendor(value);
-        const filtered = value === '' ? stockData : stockData.filter(stock => stock.vendor === value);
-        setFilteredStockData(filtered);
-    };
-
     const chartData = {
         labels: filteredStockData.map(item => item.label),
         datasets: [
             {
-                label: 'Stocks',
-                data: filteredStockData.map(item => item.value),
-                backgroundColor: filteredStockData.map(item => item.value === 0 ? 'rgba(255, 0, 0, 0.2)' : 'rgba(75, 192, 192, 0.2)'),
-                borderColor: filteredStockData.map(item => item.value === 0 ? 'rgba(255, 0, 0, 1)' : 'rgba(75, 192, 192, 1)'),
-                borderWidth: 1
+                label: 'In Stock',
+                data: filteredStockData.map(item => item.value > 0 ? item.value : null),
+                backgroundColor: 'rgba(75, 192, 192, 0.4)',
+                borderColor: 'rgb(75, 192, 192)',
+                borderWidth: 2,
+                stack: 'stack0'
+            },
+            {
+                label: 'Out of Stock',
+                data: filteredStockData.map(item => item.value === 0 ? 0 : null),
+                backgroundColor: 'rgba(255, 0, 0, 0.6)',
+                borderColor: 'rgb(220, 0, 0)',
+                borderWidth: 2,
+                stack: 'stack0'
             }
         ]
     };
@@ -235,22 +243,43 @@ export default function Home() {
         maintainAspectRatio: false,
         plugins: {
             legend: {
-                display: true
+                display: true,
+                position: 'top'
             },
             tooltip: {
                 callbacks: {
-                    label: function(context : any) {
-                        return context.raw === 0 ? 'Out of Stock' : context.raw;
+                    label: function(context: any) {
+                        if (context.dataset.label === 'Out of Stock') {
+                            return 'Out of Stock';
+                        }
+                        return `Stock: ${context.raw}`;
                     }
                 }
             }
         },
         scales: {
             x: {
+                stacked: true,
                 ticks: {
-                    color: (context : any) => {
+                    color: (context: any) => {
                         const value = chartData.datasets[0].data[context.index];
-                        return value === 0 ? 'red' : 'black';
+                        return value === null ? '#FF0000' : '#000000';
+                    },
+                    font: {
+                        weight: (context: any) => {
+                            const value = chartData.datasets[0].data[context.index];
+                            return value === null ? 'normal' : 'normal';
+                        }
+                    }
+                }
+            },
+            y: {
+                stacked: true,
+                beginAtZero: true,
+                grid: {
+                    color: (context: any) => {
+                        const value = context.tick.value;
+                        return value === 0 ? 'rgba(255, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.1)';
                     }
                 }
             }

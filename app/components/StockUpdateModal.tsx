@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {HiCheckCircle, HiTrash, HiXCircle} from 'react-icons/hi';
+import {HiCheckCircle, HiOutlineMinusCircle, HiOutlinePlusCircle, HiTrash, HiXCircle} from 'react-icons/hi';
 import { database } from '../services/firebase'; // Ensure this is set up correctly
 import {ref, onValue, update, ref as databaseRef} from '@firebase/database';
 import StockUpdate from "./StockUpdate";
@@ -154,7 +154,7 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
         setEditValues(updatedValues);
     };
 
-    const handleSaveStock = async () => {
+    const handleSaveStock = async (action : any) => {
         // Step 1: Set extracted data
         setExtractedData(editValues);
         console.log("Extracted data set:", editValues);
@@ -180,7 +180,18 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
                         // Step 4: Check if the description matches the food item name in the database
                         if (foodItemData.foodName === item.description) {
                             const currentStock = parseInt(foodItemData.stocks, 10);
-                            const newStock = currentStock + item.quantity;
+                            let newStock: number; // Declare newStock with a type
+
+                            // Determine whether to add or subtract based on the action
+                            if (action === 'add') {
+                                newStock = currentStock + item.quantity;
+                            } else if (action === 'subtract') {
+                                newStock = Math.max(currentStock - item.quantity, 0); // Prevent negative stock
+                            } else {
+                                // If action is not recognized, you can set a default or throw an error
+                                console.error(`Unrecognized action: ${action}`);
+                                return; // Exit if the action is not valid
+                            }
 
                             // Update stocks in Firebase
                             const foodItemRef = databaseRef(db, `foodItems/${childSnapshot.key}`);
@@ -209,6 +220,13 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
         setTimeout(() => {
             setStockUpdateModal(false);
         }, 3000);
+    };
+
+    const confirmAction = (action : any) => {
+        const confirmation = window.confirm(`Are you sure you want to ${action} stock?`);
+        if (confirmation) {
+            handleSaveStock(action);
+        }
     };
 
 
@@ -243,7 +261,7 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
                                         className={`py-2 px-4 text-sm font-medium ${activeTab === 'upload' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
                                         onClick={() => setActiveTab('upload')}
                                     >
-                                        Upload PDF
+                                        Upload Files
                                     </button>
                                 </div>
                             </div>
@@ -386,20 +404,34 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
                                                 </table>
                                             </div>
                                             <div
-                                                className="flex justify-end pt-6 mt-6 border-t border-gray-300 gap-4 flex-wrap">
-                                                <button
-                                                    onClick={handleAddRow}
-                                                    className="text-white bg-blue-500 p-2 rounded"
-                                                >
-                                                    + Add Row
-                                                </button>
-                                                <button
-                                                    onClick={handleSaveStock}
-                                                    className="text-white bg-green-500 p-2 rounded"
-                                                >
-                                                    Save All
-                                                </button>
+                                                className="flex flex-col items-center pt-2 mt-2 border-gray-300">
+                                                <div className="flex justify-between w-full">
+                                                    {/* Add Row Button on the Left */}
+                                                    <button
+                                                        onClick={handleAddRow}
+                                                        className="text-white bg-blue-500 p-2 rounded hover:bg-blue-600 transition"
+                                                    >
+                                                        + Add Row
+                                                    </button>
+
+                                                    {/* Add Stock and Subtract Stock Buttons on the Right */}
+                                                    <div className="flex gap-4">
+                                                        <button
+                                                            onClick={() => confirmAction('add')}
+                                                            className="flex items-center text-white bg-green-500 p-3 rounded hover:bg-green-600 transition"
+                                                        >
+                                                            <HiOutlinePlusCircle className="mr-2"/> Add Stock
+                                                        </button>
+                                                        <button
+                                                            onClick={() => confirmAction('subtract')}
+                                                            className="flex items-center text-white bg-red-500 p-3 rounded hover:bg-red-600 transition"
+                                                        >
+                                                            <HiOutlineMinusCircle className="mr-2"/> Subtract Stock
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
+
                                         </div>
                                     )}
                                 </div>
