@@ -22,7 +22,22 @@ type FoodItem = {
 
 const StockMonitor = () => {
     const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
-    const [pieChartData, setPieChartData] = useState<any>({});
+    const [pieChartData, setPieChartData] = useState<any>({
+        labels: [],
+        datasets: [{
+            data: [],
+            backgroundColor: [
+                '#FF6384',
+                '#36A2EB',
+                '#FFCE56',
+                '#FF5733',
+                '#33FF57',
+                '#3357FF',
+                '#FFC300',
+            ],
+        }],
+    });
+    const [dataFetched, setDataFetched] = useState(false);
     const toastRef = useRef<Toast>(null);
     const [isSidenavOpen, setIsSidenavOpen] = useState(false);
     const [currentPageTable, setCurrentPageTable] = useState(1);
@@ -31,9 +46,7 @@ const StockMonitor = () => {
     const maxPageButtons = 3;
 
     const showSuccess = useCallback(() => {
-        if (toastRef.current) {
-            toastRef.current.show({ severity: 'success', summary: 'Data Loaded', detail: 'Stock levels fetched successfully!', life: 3000 });
-        }
+        toastRef.current?.show({ severity: 'success', summary: 'Data Loaded', detail: 'Stock levels fetched successfully!', life: 3000 });
     }, []);
 
     useEffect(() => {
@@ -62,23 +75,60 @@ const StockMonitor = () => {
         fetchFoodItems();
     }, [showSuccess]);
 
-    const totalPagesTable = Math.ceil(foodItems.length / itemsPerPage);
-    const totalPagesChart = Math.ceil(foodItems.length / itemsPerPage);
-    const paginatedItemsTable = foodItems.slice(
-        (currentPageTable - 1) * itemsPerPage,
-        currentPageTable * itemsPerPage
-    );
-    const paginatedItemsChart = foodItems.slice(
-        (currentPageChart - 1) * itemsPerPage,
-        currentPageChart * itemsPerPage
-    );
+    useEffect(() => {
+        const fetchData = async () => {
+            if (dataFetched) return;
+            try {
+                const snapshot = await get(ref(database, 'requests'));
+                const requests = snapshot.val();
+
+                if (!requests) return;
+
+                const purchasesByMonth: { [key: string]: number } = {};
+
+                for (const key in requests) {
+                    const request = requests[key];
+                    const purchaseDate = new Date(request.dateCreated);
+                    if (isNaN(purchaseDate.getTime())) continue;
+
+                    const month = purchaseDate.toLocaleString('default', { month: 'long' });
+                    purchasesByMonth[month] = (purchasesByMonth[month] || 0) + 1;
+                }
+
+                const months = Object.keys(purchasesByMonth);
+                const counts = Object.values(purchasesByMonth);
+
+                setPieChartData({
+                    labels: months,
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: [
+                            '#FF6384',
+                            '#36A2EB',
+                            '#FFCE56',
+                            '#FF5733',
+                            '#33FF57',
+                            '#3357FF',
+                            '#FFC300',
+                        ],
+                    }],
+                });
+
+                setDataFetched(true);
+            } catch (error) {
+                console.error("Error fetching data from Firebase:", error);
+            }
+        };
+
+        fetchData();
+    }, [dataFetched]);
 
     const chartData = {
-        labels: paginatedItemsChart.map(item => item.foodName),
+        labels: foodItems.slice((currentPageChart - 1) * itemsPerPage, currentPageChart * itemsPerPage).map(item => item.foodName),
         datasets: [
             {
                 label: 'In Stock',
-                data: paginatedItemsChart.map(item => item.stocks > 0 ? item.stocks : null),
+                data: foodItems.slice((currentPageChart - 1) * itemsPerPage, currentPageChart * itemsPerPage).map(item => item.stocks > 0 ? item.stocks : null),
                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
                 borderColor: 'rgba(75, 192, 192, 1)',
                 borderWidth: 1,
@@ -86,7 +136,7 @@ const StockMonitor = () => {
             },
             {
                 label: 'Out of Stock',
-                data: paginatedItemsChart.map(item => item.stocks === 0 ? 1 : null),
+                data: foodItems.slice((currentPageChart - 1) * itemsPerPage, currentPageChart * itemsPerPage).map(item => item.stocks === 0 ? 1 : null),
                 backgroundColor: 'rgba(255, 0, 0, 0.6)',
                 borderColor: 'rgb(220, 0, 0)',
                 borderWidth: 1,
@@ -99,16 +149,11 @@ const StockMonitor = () => {
         maintainAspectRatio: false,
         responsive: true,
         plugins: {
-            legend: {
-                display: true,
-            },
+            legend: { display: true },
             tooltip: {
                 callbacks: {
                     label: function (context: any) {
-                        if (context.dataset.label === 'Out of Stock') {
-                            return 'Out of Stock';
-                        }
-                        return `${context.dataset.label}: ${context.parsed.y}`;
+                        return context.dataset.label === 'Out of Stock' ? 'Out of Stock' : `${context.dataset.label}: ${context.parsed.y}`;
                     }
                 },
                 enabled: true,
@@ -122,7 +167,7 @@ const StockMonitor = () => {
                 stacked: true,
                 beginAtZero: true,
                 grid: {
-                    color: (context : any) => context.tick.value === 0 ? 'rgba(255, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                    color: (context: any) => context.tick.value === 0 ? 'rgba(255, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.1)',
                 },
                 title: { display: true, text: 'Stock Level' },
             },
@@ -131,20 +176,45 @@ const StockMonitor = () => {
                 grid: { display: false },
                 title: { display: true, text: 'Food Items' },
                 ticks: {
-                    color: (context : any) => chartData.datasets[0].data[context.index] === null ? 'red' : 'black',
-                    font: {
-                        weight: 'normal',
-                    }
+                    color: (context: any) => chartData.datasets[0].data[context.index] === null ? 'red' : 'black',
+                    font: { weight: 'normal' }
                 },
             },
         },
     };
 
-    const startPageTable = Math.max(1, currentPageTable - 1);
-    const endPageTable = Math.min(totalPagesTable, startPageTable + maxPageButtons - 1);
+    const renderPagination = (currentPage: number, totalPages: number, setCurrentPage: (page: number) => void) => {
+        const startPage = Math.max(1, currentPage - 1);
+        const endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
 
-    const startPageChart = Math.max(1, currentPageChart - 1);
-    const endPageChart = Math.min(totalPagesChart, startPageChart + maxPageButtons - 1);
+        return (
+            <div className="flex justify-center items-center mt-4 space-x-2">
+                <button
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1 rounded-lg border ${currentPage === 1 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+                >
+                    <HiOutlineArrowLeft className="text-xl" />
+                </button>
+                {Array.from({ length: endPage - startPage + 1 }, (_, index) => (
+                    <button
+                        key={index}
+                        onClick={() => setCurrentPage(startPage + index)}
+                        className={`px-3 py-1 rounded-lg border ${currentPage === startPage + index ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+                    >
+                        {startPage + index}
+                    </button>
+                ))}
+                <button
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1 rounded-lg border ${currentPage === totalPages ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+                >
+                    <HiOutlineArrowRight className="text-xl" />
+                </button>
+            </div>
+        );
+    };
 
     return (
         <div className="min-h-screen flex bg-gray-100">
@@ -155,7 +225,7 @@ const StockMonitor = () => {
 
                 <div className="bg-white shadow-lg rounded-lg p-8 mb-10 text-black">
                     <DataTable
-                        value={paginatedItemsTable}
+                        value={foodItems.slice((currentPageTable - 1) * itemsPerPage, currentPageTable * itemsPerPage)}
                         className="p-datatable-gridlines mb-6"
                         style={{ border: '1px solid #e5e7eb', borderRadius: '0.5rem', overflow: 'hidden' }}
                     >
@@ -173,7 +243,6 @@ const StockMonitor = () => {
                             bodyClassName="border-b border-gray-200 p-3"
                             headerClassName="bg-gray-100 text-gray-700 border-b border-gray-200 p-3"
                         />
-
                         <Column
                             field="unit"
                             header="Unit"
@@ -189,66 +258,76 @@ const StockMonitor = () => {
                             headerClassName="bg-gray-100 text-gray-700 border-b border-gray-200 p-3"
                         />
                     </DataTable>
-
-
-                    {/* Table Pagination */}
-                    <div className="flex justify-center items-center mt-4 space-x-2">
-                        <button
-                            onClick={() => setCurrentPageTable(currentPageTable - 1)}
-                            disabled={currentPageTable === 1}
-                            className={`px-3 py-1 rounded-lg border ${currentPageTable === 1 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
-                        >
-                            <HiOutlineArrowLeft className="text-xl" />
-                        </button>
-                        {Array.from({ length: endPageTable - startPageTable + 1 }, (_, index) => (
-                            <button
-                                key={index}
-                                onClick={() => setCurrentPageTable(startPageTable + index)}
-                                className={`px-3 py-1 rounded-lg border ${currentPageTable === startPageTable + index ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
-                            >
-                                {startPageTable + index}
-                            </button>
-                        ))}
-                        <button
-                            onClick={() => setCurrentPageTable(currentPageTable + 1)}
-                            disabled={currentPageTable === totalPagesTable}
-                            className={`px-3 py-1 rounded-lg border ${currentPageTable === totalPagesTable ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
-                        >
-                            <HiOutlineArrowRight className="text-xl" />
-                        </button>
-                    </div>
+                    {renderPagination(currentPageTable, Math.ceil(foodItems.length / itemsPerPage), setCurrentPageTable)}
                 </div>
 
                 <h2 className="text-2xl font-semibold mb-6 text-center text-gray-800">Stock Level Chart</h2>
                 <div className="bg-white shadow-lg rounded-lg p-8 h-96">
                     <Bar data={chartData} options={chartOptions} />
                 </div>
+                {renderPagination(currentPageChart, Math.ceil(foodItems.length / itemsPerPage), setCurrentPageChart)}
 
-                {/* Chart Pagination */}
-                <div className="flex justify-center items-center mt-4 space-x-2">
-                    <button
-                        onClick={() => setCurrentPageChart(currentPageChart - 1)}
-                        disabled={currentPageChart === 1}
-                        className={`px-3 py-1 rounded-lg border ${currentPageChart === 1 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
-                    >
-                        <HiOutlineArrowLeft className="text-xl" />
-                    </button>
-                    {Array.from({ length: endPageChart - startPageChart + 1 }, (_, index) => (
-                        <button
-                            key={index}
-                            onClick={() => setCurrentPageChart(startPageChart + index)}
-                            className={`px-3 py-1 rounded-lg border ${currentPageChart === startPageChart + index ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
-                        >
-                            {startPageChart + index}
-                        </button>
-                    ))}
-                    <button
-                        onClick={() => setCurrentPageChart(currentPageChart + 1)}
-                        disabled={currentPageChart === totalPagesChart}
-                        className={`px-3 py-1 rounded-lg border ${currentPageChart === totalPagesChart ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
-                    >
-                        <HiOutlineArrowRight className="text-xl" />
-                    </button>
+                <h2 className="text-2xl font-semibold mb-6 text-center text-gray-800 mt-5">Purchase History</h2>
+                <div className="bg-white shadow-lg rounded-lg p-8 h-96 flex">
+                    <div className="w-1/2 flex items-center justify-center">
+                        {pieChartData.labels.length > 0 ? (
+                            <Pie data={pieChartData} options={{
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'Monthly Purchase Distribution',
+                                        font: { size: 18, weight: 'normal' },
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: (tooltipItem: any) => {
+                                                const dataValue = tooltipItem.raw;
+                                                const total = pieChartData.datasets[0].data.reduce((acc: number, val: number) => acc + val, 0);
+                                                const percentage = ((dataValue / total) * 100).toFixed(2);
+                                                return `${tooltipItem.label}: ${dataValue} (${percentage}%)`;
+                                            },
+                                        },
+                                    },
+                                    legend: { display: true, position: 'right' },
+                                    datalabels: {
+                                        color: '#fff',
+                                        formatter: (value: number, context: any) => {
+                                            const total = context.dataset.data.reduce((acc: number, val: number) => acc + val, 0);
+                                            const percentage = ((value / total) * 100).toFixed(1);
+                                            return `${percentage}%`;
+                                        },
+                                    },
+                                },
+                            }} />
+                        ) : (
+                            <p>No data available for the pie chart.</p>
+                        )}
+                    </div>
+                    <div className="w-1/2 p-4">
+                        <h3 className="text-lg font-medium text-gray-700 mb-4">Monthly Purchases</h3>
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-gray-300">
+                                    <th className="py-2 px-4 text-gray-600 font-semibold">Month</th>
+                                    <th className="py-2 px-4 text-gray-600 font-semibold">Purchases</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {pieChartData.labels.length > 0 ? (
+                                    pieChartData.labels.map((month, index) => (
+                                        <tr key={month} className="border-b">
+                                            <td className="py-2 px-4 text-gray-700">{month}</td>
+                                            <td className="py-2 px-4 text-gray-700">{pieChartData.datasets[0].data[index]}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={2} className="py-2 px-4 text-gray-700 text-center">No data available.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
