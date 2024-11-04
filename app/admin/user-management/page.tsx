@@ -125,10 +125,6 @@ const UserManagement = () => {
                 {/* Title and Delete Button Container */}
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-semibold text-gray-800">User Management</h1>
-                    <button className="text-m text-red-500 flex items-center" onClick={() => setDeleteUserModal(true)}>
-                        <HiTrash className="mr-2" />
-                        Delete Users
-                    </button>
                 </div>
 
                 {/* Alert Message */}

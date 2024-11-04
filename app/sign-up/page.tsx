@@ -103,7 +103,6 @@ export default function SignUp() {
                 const usersRef = ref(database, 'users');
                 const usersSnapshot = await get(usersRef);
                 isFirstUser = !usersSnapshot.exists();  // Check if there are any users in the database
-
             }
 
             // Create the user
@@ -150,12 +149,16 @@ export default function SignUp() {
                     setTimeout(() => setError(null), 5000);
                 }
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Sign-up error:', error);
-            setError(error.message);
+            if (error.code === 'auth/email-already-in-use') {
+                setError('Email already exists. Please use a different email.');
+            } else {
+                setError(error.message);
+            }
+            setTimeout(() => setError(null), 5000);
         }
     };
-
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
@@ -177,7 +180,6 @@ export default function SignUp() {
                                 <option value="Admin">Admin</option>
                                 <option value="Lecturer">Lecturer</option>
                             </select>
-
                         </div>
                         <div>
                             <label htmlFor="email-address" className="text-sm font-medium text-gray-700">Email

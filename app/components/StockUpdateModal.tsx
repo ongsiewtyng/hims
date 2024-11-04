@@ -106,13 +106,13 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
 
 
 
-    // Ensure handleQuantityChange updates Firebase and UI
     const handleQuantityChange = (vendor: string, itemId: string, change: number) => {
         const updatedItems = { ...foodItems }; // Make a copy of the existing food items
         const item = updatedItems[vendor].find(item => item.id === itemId);
 
         if (item) {
-            const newQuantity = item.stocks + change;
+            const currentStock = parseInt(item.stocks.toString(), 10); // Ensure stocks is treated as a number
+            const newQuantity = currentStock + change;
 
             // Prevent negative stock
             if (newQuantity >= 0) {
@@ -123,6 +123,7 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
                 update(itemRef, { stocks: newQuantity })
                     .then(() => {
                         // Update the state to reflect the changes immediately
+                        setError("Stock quantity updated successfully.");
                         setFoodItems(updatedItems);
                     })
                     .catch((error) => {
