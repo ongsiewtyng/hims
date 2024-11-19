@@ -25,17 +25,32 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
     const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [pdfFile, setPdfFile] = useState<File | null>(null);
+    const [excelFile, setExcelFile] = useState<File | null>(null);
     const [activeTab, setActiveTab] = useState<'stock' | 'upload'>('stock');
     const [editValues, setEditValues] = useState<{ itemNo: number; description: string; quantity: number; unit: string | null }[]>([]);
     const [extractedData, setExtractedData] = useState<{ itemNo: number; description: string; quantity: number; unit: string | null }[]>([]);
     const [fileUploaded, setFileUploaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleFileChange = (fileData : any) => {
-        setPdfFile(fileData);
-        setEditValues(fileData);
-        setFileUploaded(true);
-    }
+    const handleFileChange = (fileData: any[]) => {
+        if (Array.isArray(fileData)) {
+            // PDF data: An array of items
+            console.log("PDF Data Received:", fileData);
+            setPdfFile(fileData);
+            setEditValues(fileData);
+            setFileUploaded(true);
+        } else if (typeof fileData === "object" && fileData !== null) {
+            // Excel data: An object with vendors data
+            console.log("Excel Data Received:", fileData);
+            setExcelFile(fileData); // Clear any previously set PDF data
+            setEditValues(fileData); // Clear edit values for PDF
+            // Process the Excel data if needed here
+            setFileUploaded(true);
+        } else {
+            console.error("Unsupported file data type received:", fileData);
+        }
+    };
+
 
     // Fetch food items from the Firebase Realtime Database
     useEffect(() => {
@@ -88,7 +103,7 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
 
 
     // Function to update Firebase on blur event
-    const updateStocksInDatabase = (vendor, itemId) => {
+    const updateStocksInDatabase = (vendor: any, itemId: any) => {
         const item = foodItems[vendor].find(item => item.id === itemId);
 
         if (item) {
@@ -250,21 +265,19 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
                     ) : (
                         <div>
                             {/* Tab Navigation */}
-                            <div className="mb-4">
-                                <div className="flex border-b border-gray-200">
-                                    <button
-                                        className={`py-2 px-4 text-sm font-medium ${activeTab === 'stock' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
-                                        onClick={() => setActiveTab('stock')}
-                                    >
-                                        Stock Management
-                                    </button>
-                                    <button
-                                        className={`py-2 px-4 text-sm font-medium ${activeTab === 'upload' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
-                                        onClick={() => setActiveTab('upload')}
-                                    >
-                                        Upload Files
-                                    </button>
-                                </div>
+                            <div className="flex border-b border-gray-200 mb-4">
+                                <button
+                                    className={`py-2 px-4 text-sm font-medium ${activeTab === 'stock' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+                                    onClick={() => setActiveTab('stock')}
+                                >
+                                    Stock Management
+                                </button>
+                                <button
+                                    className={`py-2 px-4 text-sm font-medium ${activeTab === 'upload' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+                                    onClick={() => setActiveTab('upload')}
+                                >
+                                    Upload Files
+                                </button>
                             </div>
 
                             {activeTab === 'stock' && (
@@ -343,69 +356,89 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
                             {activeTab === 'upload' && (
                                 <div className="">
                                     {/* PDF Upload Component */}
-                                    <StockUpdate onPDFDataChange={handleFileChange}/>
+                                    <StockUpdate onPDFDataChange={handleFileChange} onExcelDataChange={handleFileChange} />
 
                                     {/* Conditionally Render Table Form Section */}
                                     {fileUploaded && (
-                                        <div className="bg-white rounded-2xl w-full p-8 max-w-6xl mx-auto mt-4">
-                                            <div className="overflow-y-auto rounded-lg border border-gray-200">
-                                                <table className="min-w-full bg-white rounded-lg">
-                                                    <thead>
-                                                    <tr className="bg-primary text-black text-sm font-semibold uppercase">
-                                                        <th className="py-3 px-6 border-b border-gray-300">No</th>
-                                                        <th className="py-3 px-6 border-b border-gray-300">Description</th>
-                                                        <th className="py-3 px-6 border-b border-gray-300">Quantity</th>
-                                                        <th className="py-3 px-6 border-b border-gray-300">Unit</th>
-                                                        <th className="py-3 px-6 border-b border-gray-300">Actions</th>
-                                                    </tr>
-                                                    </thead>
-                                                    <tbody className="text-gray-700 text-sm divide-y divide-gray-200">
-                                                    {editValues.map((item, index) => (
-                                                        <tr key={index}
-                                                            className="hover:bg-gray-50 transition ease-in-out duration-150">
-                                                            <td className="py-3 px-6 min-w-[100px] text-center">{item.itemNo}</td>
-                                                            <td className="py-3 px-6 text-left min-w-[200px]">
-                                                                <input
-                                                                    type="text"
-                                                                    name="description"
-                                                                    value={item.description}
-                                                                    onChange={(e) => handleInputChange2(index, e)}
-                                                                    className="border border-gray-300 rounded-md p-1 w-full"
-                                                                />
-                                                            </td>
-                                                            <td className="py-3 px-6 min-w-[150px]">
-                                                                <input
-                                                                    type="number"
-                                                                    name="quantity"
-                                                                    value={item.quantity}
-                                                                    onChange={(e) => handleInputChange2(index, e)}
-                                                                    className="border border-gray-300 rounded-md p-1 w-full"
-                                                                />
-                                                            </td>
-                                                            <td className="py-3 px-6 min-w-[150px]">
-                                                                <input
-                                                                    type="text"
-                                                                    name="unit"
-                                                                    value={item.unit || ''}
-                                                                    onChange={(e) => handleInputChange2(index, e)}
-                                                                    className="border border-gray-300 rounded-md p-1 w-full"
-                                                                />
-                                                            </td>
-                                                            <td className="py-3 px-6 min-w-[150px] text-center">
-                                                                <button
-                                                                    onClick={() => handleDeleteRow(index)}
-                                                                    className="text-red-500"
-                                                                >
-                                                                    <HiTrash/>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
+                                        <div className="bg-white rounded-2xl w-full p-8 max-w-6xl mx-auto">
+                                            {/* Vendor Tabs */}
+                                            <div className="mb-4">
+                                                <div className="flex border-b border-gray-200">
+                                                    {Object.keys(editValues.reduce((acc, item) => {
+                                                        acc[item.vendor] = true;
+                                                        return acc;
+                                                    }, {})).map((vendor) => (
+                                                        <button
+                                                            key={vendor}
+                                                            className={`py-2 px-4 text-sm font-medium ${selectedVendor === vendor ? 'border-b-2 border-blue-500' : ''}`}
+                                                            onClick={() => setSelectedVendor(vendor)}
+                                                        >
+                                                            {vendor}
+                                                        </button>
                                                     ))}
-                                                    </tbody>
-                                                </table>
+                                                </div>
                                             </div>
-                                            <div
-                                                className="flex flex-col items-center pt-2 mt-2 border-gray-300">
+
+                                            {/* Display items for the selected vendor */}
+                                            {selectedVendor && (
+                                                <div className="overflow-y-auto rounded-lg border border-gray-200 max-h-[52vh]">
+                                                    <table className="min-w-full bg-white rounded-lg">
+                                                        <thead>
+                                                        <tr className="bg-primary text-black text-sm font-semibold uppercase">
+                                                            <th className="py-3 px-6 border-b border-gray-300">No</th>
+                                                            <th className="py-3 px-6 border-b border-gray-300">Description</th>
+                                                            <th className="py-3 px-6 border-b border-gray-300">Quantity</th>
+                                                            <th className="py-3 px-6 border-b border-gray-300">Unit</th>
+                                                            <th className="py-3 px-6 border-b border-gray-300">Actions</th>
+                                                        </tr>
+                                                        </thead>
+                                                        <tbody className="text-gray-700 text-sm divide-y divide-gray-200">
+                                                        {editValues.filter(item => item.vendor === selectedVendor).map((item, index) => (
+                                                            <tr key={index} className="hover:bg-gray-50 transition ease-in-out duration-150">
+                                                                <td className="py-3 px-6 min-w-[100px] text-center">{index + 1}</td>
+                                                                <td className="py-3 px-6 text-left min-w-[200px]">
+                                                                    <input
+                                                                        type="text"
+                                                                        name="description"
+                                                                        value={item.description}
+                                                                        onChange={(e) => handleInputChange2(index, e)}
+                                                                        className="border border-gray-300 rounded-md p-1 w-full"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-3 px-6 min-w-[150px]">
+                                                                    <input
+                                                                        type="number"
+                                                                        name="quantity"
+                                                                        value={item.quantity}
+                                                                        onChange={(e) => handleInputChange2(index, e)}
+                                                                        className="border border-gray-300 rounded-md p-1 w-full"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-3 px-6 min-w-[150px]">
+                                                                    <input
+                                                                        type="text"
+                                                                        name="unit"
+                                                                        value={item.unit || ''}
+                                                                        onChange={(e) => handleInputChange2(index, e)}
+                                                                        className="border border-gray-300 rounded-md p-1 w-full"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-3 px-6 min-w-[150px] text-center">
+                                                                    <button
+                                                                        onClick={() => handleDeleteRow(index)}
+                                                                        className="text-red-500"
+                                                                    >
+                                                                        <HiTrash/>
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+
+                                            <div className="flex flex-col items-center pt-2 mt-2 border-gray-300">
                                                 <div className="flex justify-between w-full">
                                                     {/* Add Row Button on the Left */}
                                                     <button
@@ -432,7 +465,6 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
                                                     </div>
                                                 </div>
                                             </div>
-
                                         </div>
                                     )}
                                 </div>

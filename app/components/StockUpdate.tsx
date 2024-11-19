@@ -7,6 +7,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import '@ungap/with-resolvers';
 //import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 import Tesseract from 'tesseract.js';
+import * as XLSX from "xlsx";
 
 const { withResolvers } = Promise;
 
@@ -14,9 +15,11 @@ type StockUpdateProps = {
     onPDFDataChange: (
         extractedValues: { itemNo: number; description: string; quantity: number }[]
     ) => void;
+
+    onExcelDataChange: (allVendorsData: any) => void;
 };
 
-const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
+const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange, onExcelDataChange }) => {
     const [message, setMessage] = useState('No Files Selected');
     const [isFormVisible, setIsFormVisible] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
@@ -72,10 +75,13 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
         const uploadFileElement = document.getElementById('upload-file') as HTMLInputElement;
         const file = uploadFileElement.files ? uploadFileElement.files[0] : null;
+
         if (file) {
             setIsUploading(true);
+
             const storage = getStorage();
             const storageRef = ref(storage, 'uploads/' + file.name);
 
@@ -92,7 +98,19 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
                 () => {
                     getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
                         console.log('File available at', downloadURL);
-                        fetchAndReadPDFFile(downloadURL);
+
+                        // Determine file type and call appropriate function
+                        if (file.type === 'application/pdf') {
+                            fetchAndReadPDFFile(downloadURL);
+                        } else if (
+                            file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                            file.type === 'application/vnd.ms-excel'
+                        ) {
+                            fetchAndReadExcelFile(downloadURL);
+                        } else {
+                            console.error('Unsupported file type:', file.type);
+                        }
+
                         setIsFormVisible(false);
                         setIsUploading(false);
                     });
@@ -102,6 +120,7 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
             console.log('No file selected');
         }
     };
+
 
     const fetchAndReadPDFFile = async (downloadURL: string) => {
         try {
@@ -179,6 +198,69 @@ const StockUpdate: React.FC<StockUpdateProps> = ({ onPDFDataChange }) => {
 
         } catch (error) {
             console.error('PDF processing error:', error);
+        }
+    };
+
+    const fetchAndReadExcelFile = async (downloadURL: string) => {
+        try {
+            const response = await fetch(downloadURL);
+            if (!response.ok) throw new Error("Network response was not ok");
+
+            const blob = await response.blob();
+            const getData = await new Promise<ArrayBuffer>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    if (evt.target?.result) resolve(evt.target.result as ArrayBuffer);
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(blob);
+            });
+
+            const data = new Uint8Array(getData);
+            const wb = XLSX.read(data, { type: "array" });
+
+            const extractedData: { vendor: string, itemNo: number; description: string; quantity: number; unit: string | null }[] = [];
+            let counter = 1;
+
+            wb.SheetNames.forEach((sheetName) => {
+                const ws = wb.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+
+                const headerRow = jsonData[0];
+                const dataRows = jsonData.slice(1);
+
+                const vendorIndex = headerRow.indexOf("Vendor");
+                const itemIndex = headerRow.indexOf("Items");
+                const unitIndex = headerRow.indexOf("Unit");
+                const qtyIndex = headerRow.indexOf("Qty to order");
+
+                if (itemIndex !== -1 && unitIndex !== -1 && qtyIndex !== -1) {
+                    dataRows.forEach((row) => {
+                        const vendor = row[vendorIndex];
+                        const description = row[itemIndex];
+                        const unit = row[unitIndex] || "nos";
+                        const quantity = row[qtyIndex];
+
+                        // Only add row if all required values are defined
+                        if (description !== undefined && quantity !== null) {
+                            extractedData.push({
+                                vendor,
+                                itemNo: counter++,
+                                description,
+                                unit,
+                                quantity: Number(quantity) || 0, // Ensure numeric value
+                            });
+                        }
+                    });
+                }
+            });
+
+            console.log("Extracted Data:", extractedData);
+            onExcelDataChange(extractedData); // Pass the filtered and processed data
+            setEditValues(extractedData);    // Update state
+        } catch (error) {
+            console.error("Fetch error:", error);
+            setEditValues([]); // Handle errors gracefully
         }
     };
 
