@@ -1,0 +1,12 @@
+/* Add this CSS to your styles */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    50% { transform: translateX(2px); }
+    75% { transform: translateX(-2px); }
+}
+
+.shake {
+    display: inline-block;
+    animation: shake 0.5s infinite;
+}

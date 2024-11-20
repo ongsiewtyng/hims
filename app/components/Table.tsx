@@ -6,6 +6,8 @@ import { FiEdit3 } from "react-icons/fi";
 import { IoStorefrontOutline } from "react-icons/io5";
 import { HiCheckCircle, HiOutlineArrowLeft, HiOutlineArrowRight, HiOutlineSearch, HiXCircle } from "react-icons/hi";
 import { getDatabase } from "@firebase/database";
+import '../components/shake.css';
+import { TfiAlert } from "react-icons/tfi";
 
 interface Vendors {
     id: string;
@@ -236,13 +238,19 @@ const Table: React.FC = () => {
                                                         <div className="text-sm text-gray-900">{item.foodName}</div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm text-gray-900">{item.stocks}</div>
+                                                        <div className="text-sm text-gray-900 flex items-center">
+                                                            {item.stocks}
+                                                            {parseInt(item.stocks) < 3 && (
+                                                                <TfiAlert className="shake text-red-500 ml-2"/>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <div className="text-sm text-gray-900">{item.unit}</div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <button onClick={() => setEditDataModal(item)} className="text-blue-500 hover:text-blue-700">
+                                                        <button onClick={() => setEditDataModal(item)}
+                                                                className="text-blue-500 hover:text-blue-700">
                                                             <FiEdit3 className="h-5 w-5"/>
                                                         </button>
                                                     </td>
