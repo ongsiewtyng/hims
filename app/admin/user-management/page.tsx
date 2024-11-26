@@ -4,7 +4,8 @@ import { ref, onValue, update, remove } from "firebase/database";
 import { database } from "../../services/firebase";
 import Sidenav from "../../components/Sidenav";
 import { HiTrash } from "react-icons/hi";
-import { auth } from "../../services/firebase"; // Assuming auth is set up for Firebase Authentication
+import { auth } from "../../services/firebase";
+import {get} from "@firebase/database"; // Assuming auth is set up for Firebase Authentication
 
 interface User {
     uid: string;
@@ -96,14 +97,34 @@ const UserManagement = () => {
         if (confirmDelete) {
             setDeletingUsers([...deletingUsers, uid]); // Add user to deletingUsers state
             try {
-                await remove(ref(database, `users/${uid}`)); // Delete user from Firebase
+                // Fetch all requests
+                const requestsRef = ref(database, 'requests');
+                const snapshot = await get(requestsRef);
+                const requestsData = snapshot.val();
+
+                // Filter requests by userID
+                const updates: { [key: string]: null } = {};
+                for (const requestId in requestsData) {
+                    if (requestsData[requestId].userID === uid) {
+                        updates[`requests/${requestId}`] = null;
+                    }
+                }
+
+                // Add user deletion to updates
+                updates[`users/${uid}`] = null;
+
+                // Perform the updates
+                await update(ref(database), updates);
+
                 setAllUsers(allUsers.filter(user => user.uid !== uid)); // Remove user from allUsers state
                 setDeletingUsers(deletingUsers.filter(user => user !== uid)); // Remove user from deletingUsers state
-                setAlertMessage('User deleted successfully!'); // Set alert message
+                setAlertMessage('User and Related Requests deleted successfully!'); // Set alert message
+                setTimeout(() => setAlertMessage(null), 5000); // Clear alert message after 5 seconds
             } catch (error) {
-                console.error('Error deleting user:', error);
+                console.error('Error deleting user and related requests:', error);
                 setDeletingUsers(deletingUsers.filter(user => user !== uid)); // Remove user from deletingUsers state
-                setAlertMessage('Failed to delete user. Please try again.'); // Set alert message
+                setAlertMessage('Failed to delete user and related requests. Please try again.'); // Set alert message
+                setTimeout(() => setAlertMessage(null), 5000); // Clear alert message after 5 seconds
             }
         }
     };
