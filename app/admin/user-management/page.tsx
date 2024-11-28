@@ -3,11 +3,14 @@ import React, { useEffect, useState } from 'react';
 import { ref, onValue, update, remove } from "firebase/database";
 import { database } from "../../services/firebase";
 import Sidenav from "../../components/Sidenav";
-import { HiTrash } from "react-icons/hi";
+import {HiTrash, HiOutlineUserAdd, HiOutlineUserRemove} from "react-icons/hi";
 import { auth } from "../../services/firebase";
-import {get} from "@firebase/database"; // Assuming auth is set up for Firebase Authentication
+import { get } from "@firebase/database";
+import {user} from "firebase-functions/v1/auth"; // Assuming auth is set up for Firebase Authentication
 
 interface User {
+    requiredApproval: unknown;
+    archived: boolean;
     uid: string;
     email: string;
     isSuperAdmin: boolean;
@@ -34,9 +37,11 @@ const UserManagement = () => {
                 onValue(userRef, (snapshot) => {
                     const data = snapshot.val();
                     setCurrentUser({
+                        requiredApproval: data?.requiredApproval || false,
+                        archived: false,
                         uid: user.uid,
                         email: user.email || "",
-                        isSuperAdmin: data?.isSuperAdmin || false,
+                        isSuperAdmin: data?.isSuperAdmin || false
                     });
                 });
             }
@@ -46,24 +51,30 @@ const UserManagement = () => {
     }, []);
 
     useEffect(() => {
-        const usersRef = ref(database, 'users'); // Reference to 'users' node in Firebase
-        onValue(usersRef, (snapshot) => {
-            const data = snapshot.val();
+        const usersRef = ref(database, 'users'); // Reference to the 'users' node in Firebase
 
-            const userList = data ? Object.keys(data).map((key) => ({
-                uid: key,
-                email: data[key].email,
-                isSuperAdmin: data[key].isSuperAdmin,
-                roles: data[key].roles,
-                requiredApproval: data[key].requiredApproval || false, // Default to false if not available
-                status: data[key].status || 'active', // Default status if not available
-            })) : [];
+        const unsubscribe = onValue(usersRef, (snapshot) => {
+            const data = snapshot.val();
+            const userList = data
+                ? Object.keys(data).map((key) => ({
+                    uid: key,
+                    email: data[key].email,
+                    isSuperAdmin: data[key].isSuperAdmin,
+                    roles: data[key].roles,
+                    requiredApproval: data[key].requiredApproval || false, // Default to false if not available
+                    status: data[key].status || 'active', // Default status if not available
+                    archived: data[key].archived || false, // Default to false if not available
+                }))
+                : [];
 
             setAllUsers(userList);
 
-            // Modify setPendingUsers to filter by requiredApproval instead of status
-            setPendingUsers(userList.filter(user => user.requiredApproval)); // Users that need approval
+            // Update pending users list in real time
+            setPendingUsers(userList.filter((user) => user.requiredApproval));
         });
+
+        // Clean up listener when the component unmounts
+        return () => unsubscribe();
     }, []);
 
     // Handle Approve User
@@ -93,37 +104,78 @@ const UserManagement = () => {
 
     // Handle Delete User
     const handleDeleteUser = async (uid: string) => {
-        const confirmDelete = window.confirm('Are you sure you want to delete this user?');
-        if (confirmDelete) {
-            setDeletingUsers([...deletingUsers, uid]); // Add user to deletingUsers state
+        const confirmArchive = window.confirm('Are you sure you want to archive this user and their related requests?');
+        if (confirmArchive) {
+            setDeletingUsers((prev) => [...prev, uid]); // Show a loading indicator for the user
             try {
-                // Fetch all requests
+                await update(ref(database, `users/${uid}`), {
+                    archived: true, // Mark the user as archived
+                });
+
+                // Archive related requests
                 const requestsRef = ref(database, 'requests');
-                const snapshot = await get(requestsRef);
-                const requestsData = snapshot.val();
-
-                // Filter requests by userID
-                const updates: { [key: string]: null } = {};
-                for (const requestId in requestsData) {
-                    if (requestsData[requestId].userID === uid) {
-                        updates[`requests/${requestId}`] = null;
+                onValue(requestsRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        const updates: { [key: string]: boolean } = {};
+                        Object.keys(data).forEach((key) => {
+                            if (data[key].userId === uid) {
+                                updates[`requests/${key}/archived`] = true;
+                            }
+                        });
+                        update(ref(database), updates);
                     }
-                }
+                });
 
-                // Add user deletion to updates
-                updates[`users/${uid}`] = null;
+                setAlertMessage('User and related requests archived successfully!');
+                setTimeout(() => setAlertMessage(null), 5000);
+            } catch (error) {
+                console.error('Error archiving user and related requests:', error);
+                setAlertMessage('Failed to archive user and related requests. Please try again.');
+                setTimeout(() => setAlertMessage(null), 5000);
+            } finally {
+                setDeletingUsers((prev) => prev.filter((id) => id !== uid)); // Remove loading indicator
+            }
+        }
+    };
 
-                // Perform the updates
-                await update(ref(database), updates);
 
-                setAllUsers(allUsers.filter(user => user.uid !== uid)); // Remove user from allUsers state
-                setDeletingUsers(deletingUsers.filter(user => user !== uid)); // Remove user from deletingUsers state
-                setAlertMessage('User and Related Requests deleted successfully!'); // Set alert message
+    // Handle Unarchive User
+    const handleEnableUser = async (uid: string) => {
+        const confirmUnarchive = window.confirm('Are you sure you want to unarchive this user?');
+        if (confirmUnarchive) {
+            try {
+                await update(ref(database, `users/${uid}`), {
+                    archived: false, // Unarchive the user
+                });
+
+                setAlertMessage('User unarchived successfully!');
+                setTimeout(() => setAlertMessage(null), 5000);
+            } catch (error) {
+                console.error('Error unarchiving user:', error);
+                setAlertMessage('Failed to unarchive user. Please try again.');
+                setTimeout(() => setAlertMessage(null), 5000);
+            }
+        }
+    };
+
+    // Function to handle toggling a user's Super Admin status
+    const handleToggleSuperAdmin = async (uid: string, currentStatus: boolean) => {
+        const action = currentStatus ? 'revoke' : 'grant'; // Determine action based on current status
+        const confirmAction = window.confirm(`Are you sure you want to ${action} this user's Super Admin role?`);
+        if (confirmAction) {
+            try {
+                await update(ref(database, `users/${uid}`), {
+                    isSuperAdmin: !currentStatus // Toggle isSuperAdmin
+                });
+                setAllUsers(allUsers.map(user =>
+                    user.uid === uid ? { ...user, isSuperAdmin: !currentStatus } : user
+                )); // Update state
+                setAlertMessage(`User's Super Admin role ${action}ed successfully!`); // Set alert message
                 setTimeout(() => setAlertMessage(null), 5000); // Clear alert message after 5 seconds
             } catch (error) {
-                console.error('Error deleting user and related requests:', error);
-                setDeletingUsers(deletingUsers.filter(user => user !== uid)); // Remove user from deletingUsers state
-                setAlertMessage('Failed to delete user and related requests. Please try again.'); // Set alert message
+                console.error(`Error trying to ${action} Super Admin role:`, error);
+                setAlertMessage(`Failed to ${action} Super Admin role. Please try again.`); // Set alert message
                 setTimeout(() => setAlertMessage(null), 5000); // Clear alert message after 5 seconds
             }
         }
@@ -161,7 +213,9 @@ const UserManagement = () => {
                     <div className="bg-white shadow-lg rounded-lg p-6">
                         <h2 className="text-2xl font-medium text-gray-700 mb-4">All Users</h2>
                         {currentUsers.length > 0 ? (
-                            currentUsers.map((user) => (
+                            currentUsers
+                                .filter((user) => !user.requiredApproval)
+                                .map((user) => (
                                 <div key={user.uid}
                                      className="flex items-center bg-gray-50 hover:bg-gray-100 p-4 rounded-lg mb-4">
                                     {/* User Icon */}
@@ -178,12 +232,40 @@ const UserManagement = () => {
 
                                     {/* Delete Button */}
                                     {currentUser?.isSuperAdmin && (
-                                        <button
-                                            onClick={() => handleDeleteUser(user.uid)}
-                                            className="text-m text-red-500 flex items-center ml-auto "
-                                        >
-                                            <HiTrash className="text-xl mr-2 cursor-pointer" />
-                                        </button>
+                                        <div className="flex items-center ml-auto">
+                                            {!user.archived && (
+                                                <button
+                                                    onClick={() => handleToggleSuperAdmin(user.uid, user.isSuperAdmin)}
+                                                    className={`text-m ${user.isSuperAdmin ? 'text-yellow-500' : 'text-blue-500'} flex items-center`}
+                                                >
+                                                    {user.isSuperAdmin ? (
+                                                        <>
+                                                            <HiOutlineUserRemove className="text-xl mr-2"/>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <HiOutlineUserAdd className="text-xl mr-2"/>
+                                                        </>
+                                                    )}
+                                                </button>
+
+                                            )}
+                                            {user.archived ? (
+                                                <button
+                                                    onClick={() => handleEnableUser(user.uid)}
+                                                    className="text-m text-green-500 flex items-center"
+                                                >
+                                                    <HiOutlineUserAdd className="text-xl mr-2 cursor-pointer" />
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleDeleteUser(user.uid)}
+                                                    className="text-m text-red-500 flex items-center"
+                                                >
+                                                    <HiTrash className="text-xl mr-2 cursor-pointer" />
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             ))

@@ -1,4 +1,3 @@
-// components/Sidenav.js
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -11,7 +10,7 @@ import {
     HiOutlineChartPie
 } from 'react-icons/hi';
 import { database } from '../services/firebase';
-import {onChildAdded, onChildChanged, ref} from "firebase/database";
+import { onChildAdded, onChildChanged, onChildRemoved, ref } from 'firebase/database';
 
 type SidenavProps = {
     setIsSidenavOpen: (isOpen: boolean) => void;
@@ -59,42 +58,42 @@ const Sidenav = ({ setIsSidenavOpen }: SidenavProps) => {
         setIsSidenavOpen(isOpen);
     }, [isOpen, setIsSidenavOpen]);
 
-    // Fetch users and count those requiring approval
-    const fetchPendingCount = () => {
-        const usersRef = ref(database, "users"); // Adjust path to your users node
-        let count = 0;
-
-        // Listen for new users and count those requiring approval
-        onChildAdded(usersRef, (snapshot) => {
-            const user = snapshot.val();
-
-            // Check if user requires approval
-            if (user.requiredApproval && user.status !== 'active') {
-                count++;
-            }
-
-            // Update the pending count whenever a user is added
-            setPendingCount(count);
-        });
-
-        // Listen for changes to existing users (if needed)
-        onChildChanged(usersRef, (snapshot) => {
-            const user = snapshot.val();
-
-            // Adjust count if status changes
-            if (user.requiredApproval && user.status === 'active') {
-                count--;
-            } else if (user.requiredApproval && user.status !== 'active') {
-                count++;
-            }
-
-            setPendingCount(count);
-        });
-    };
-
     useEffect(() => {
-        fetchPendingCount();
+        const usersRef = ref(database, "users");
+
+        // Attach listeners
+        const unsubscribeAdd = onChildAdded(usersRef, (snapshot) => {
+            const user = snapshot.val();
+            if (user.requiredApproval === true && !user.status) {
+                setPendingCount((prevCount) => prevCount + 1);
+            }
+        });
+
+        const unsubscribeChange = onChildChanged(usersRef, (snapshot) => {
+            const user = snapshot.val();
+            setPendingCount((prevCount) => {
+                if (user.requiredApproval === false && user.status === 'active') {
+                    return Math.max(0, prevCount - 1);
+                }
+                return prevCount;
+            });
+        });
+
+        const unsubscribeRemove = onChildRemoved(usersRef, (snapshot) => {
+            const user = snapshot.val();
+            if (user.requiredApproval === true && !user.status) {
+                setPendingCount((prevCount) => Math.max(0, prevCount - 1));
+            }
+        });
+
+        // Cleanup listeners on unmount
+        return () => {
+            unsubscribeAdd();
+            unsubscribeChange();
+            unsubscribeRemove();
+        };
     }, []);
+
 
     return (
         <div

@@ -32,6 +32,8 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
     const [fileUploaded, setFileUploaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+
+
     const handleFileChange = (fileData: any[]) => {
         if (Array.isArray(fileData)) {
             // PDF data: An array of items
@@ -354,121 +356,131 @@ const StockUpdateModal: React.FC<StockUpdateModalProps> = ({ stockUpdateModal, s
 
                             {/* PDF Upload Section */}
                             {activeTab === 'upload' && (
-                                <div className="">
+                                <div>
                                     {/* PDF Upload Component */}
                                     <StockUpdate onPDFDataChange={handleFileChange} onExcelDataChange={handleFileChange} />
 
                                     {/* Conditionally Render Table Form Section */}
                                     {fileUploaded && (
                                         <div className="bg-white rounded-2xl w-full p-8 max-w-6xl mx-auto">
-                                            {/* Vendor Tabs */}
-                                            <div className="mb-4">
-                                                <div className="flex border-b border-gray-200">
-                                                    {Object.keys(editValues.reduce((acc, item) => {
-                                                        acc[item.vendor] = true;
-                                                        return acc;
-                                                    }, {})).map((vendor) => (
-                                                        <button
-                                                            key={vendor}
-                                                            className={`py-2 px-4 text-sm font-medium ${selectedVendor === vendor ? 'border-b-2 border-blue-500' : ''}`}
-                                                            onClick={() => setSelectedVendor(vendor)}
-                                                        >
-                                                            {vendor}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Display items for the selected vendor */}
-                                            {selectedVendor && (
-                                                <div className="overflow-y-auto rounded-lg border border-gray-200 max-h-[52vh]">
-                                                    <table className="min-w-full bg-white rounded-lg">
-                                                        <thead>
-                                                        <tr className="bg-primary text-black text-sm font-semibold uppercase">
-                                                            <th className="py-3 px-6 border-b border-gray-300">No</th>
-                                                            <th className="py-3 px-6 border-b border-gray-300">Description</th>
-                                                            <th className="py-3 px-6 border-b border-gray-300">Quantity</th>
-                                                            <th className="py-3 px-6 border-b border-gray-300">Unit</th>
-                                                            <th className="py-3 px-6 border-b border-gray-300">Actions</th>
-                                                        </tr>
-                                                        </thead>
-                                                        <tbody className="text-gray-700 text-sm divide-y divide-gray-200">
-                                                        {editValues.filter(item => item.vendor === selectedVendor).map((item, index) => (
-                                                            <tr key={index} className="hover:bg-gray-50 transition ease-in-out duration-150">
-                                                                <td className="py-3 px-6 min-w-[100px] text-center">{index + 1}</td>
-                                                                <td className="py-3 px-6 text-left min-w-[200px]">
-                                                                    <input
-                                                                        type="text"
-                                                                        name="description"
-                                                                        value={item.description}
-                                                                        onChange={(e) => handleInputChange2(index, e)}
-                                                                        className="border border-gray-300 rounded-md p-1 w-full"
-                                                                    />
-                                                                </td>
-                                                                <td className="py-3 px-6 min-w-[150px]">
-                                                                    <input
-                                                                        type="number"
-                                                                        name="quantity"
-                                                                        value={item.quantity}
-                                                                        onChange={(e) => handleInputChange2(index, e)}
-                                                                        className="border border-gray-300 rounded-md p-1 w-full"
-                                                                    />
-                                                                </td>
-                                                                <td className="py-3 px-6 min-w-[150px]">
-                                                                    <input
-                                                                        type="text"
-                                                                        name="unit"
-                                                                        value={item.unit || ''}
-                                                                        onChange={(e) => handleInputChange2(index, e)}
-                                                                        className="border border-gray-300 rounded-md p-1 w-full"
-                                                                    />
-                                                                </td>
-                                                                <td className="py-3 px-6 min-w-[150px] text-center">
-                                                                    <button
-                                                                        onClick={() => handleDeleteRow(index)}
-                                                                        className="text-red-500"
-                                                                    >
-                                                                        <HiTrash/>
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
+                                            {/* Vendor Tabs (Only for Excel Files) */}
+                                            {excelFile && (
+                                                <div className="mb-4">
+                                                    <div className="flex border-b border-gray-200">
+                                                        {Object.keys(editValues.reduce((acc, item) => {
+                                                            acc[item.vendor] = true;
+                                                            return acc;
+                                                        }, {})).map((vendor) => (
+                                                            <button
+                                                                key={vendor}
+                                                                className={`py-2 px-4 text-sm font-medium ${
+                                                                    selectedVendor === vendor ? 'border-b-2 border-blue-500' : ''
+                                                                }`}
+                                                                onClick={() => setSelectedVendor(vendor)}
+                                                            >
+                                                                {vendor}
+                                                            </button>
                                                         ))}
-                                                        </tbody>
-                                                    </table>
+                                                    </div>
                                                 </div>
                                             )}
 
-                                            <div className="flex flex-col items-center pt-2 mt-2 border-gray-300">
-                                                <div className="flex justify-between w-full">
-                                                    {/* Add Row Button on the Left */}
-                                                    <button
-                                                        onClick={handleAddRow}
-                                                        className="text-white bg-blue-500 p-2 rounded hover:bg-blue-600 transition"
-                                                    >
-                                                        + Add Row
-                                                    </button>
+                                            {/* Display Items */}
+                                            <div className="overflow-y-auto rounded-lg border border-gray-200 max-h-[52vh]">
+                                                <table className="min-w-full bg-white rounded-lg">
+                                                    <thead>
+                                                    <tr className="bg-primary text-black text-sm font-semibold uppercase">
+                                                        <th className="py-3 px-6 border-b border-gray-300">No</th>
+                                                        <th className="py-3 px-6 border-b border-gray-300">Description</th>
+                                                        <th className="py-3 px-6 border-b border-gray-300">Quantity</th>
+                                                        <th className="py-3 px-6 border-b border-gray-300">Unit</th>
+                                                        <th className="py-3 px-6 border-b border-gray-300">Actions</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody className="text-gray-700 text-sm divide-y divide-gray-200">
+                                                    {(excelFile
+                                                            ? editValues.filter(item => item.vendor === selectedVendor)
+                                                            : editValues
+                                                    ).map((item, index) => (
+                                                        <tr
+                                                            key={index}
+                                                            className="hover:bg-gray-50 transition ease-in-out duration-150"
+                                                        >
+                                                            <td className="py-3 px-6 min-w-[100px] text-center">
+                                                                {index + 1}
+                                                            </td>
+                                                            <td className="py-3 px-6 text-left min-w-[200px]">
+                                                                <input
+                                                                    type="text"
+                                                                    name="description"
+                                                                    value={item.description}
+                                                                    onChange={(e) => handleInputChange2(index, e)}
+                                                                    className="border border-gray-300 rounded-md p-1 w-full"
+                                                                />
+                                                            </td>
+                                                            <td className="py-3 px-6 min-w-[150px]">
+                                                                <input
+                                                                    type="number"
+                                                                    name="quantity"
+                                                                    value={item.quantity}
+                                                                    onChange={(e) => handleInputChange2(index, e)}
+                                                                    className="border border-gray-300 rounded-md p-1 w-full"
+                                                                />
+                                                            </td>
+                                                            <td className="py-3 px-6 min-w-[150px]">
+                                                                <input
+                                                                    type="text"
+                                                                    name="unit"
+                                                                    value={item.unit || ''}
+                                                                    onChange={(e) => handleInputChange2(index, e)}
+                                                                    className="border border-gray-300 rounded-md p-1 w-full"
+                                                                />
+                                                            </td>
+                                                            <td className="py-3 px-6 min-w-[150px] text-center">
+                                                                <button
+                                                                    onClick={() => handleDeleteRow(index)}
+                                                                    className="text-red-500"
+                                                                >
+                                                                    <HiTrash />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
 
-                                                    {/* Add Stock and Subtract Stock Buttons on the Right */}
-                                                    <div className="flex gap-4">
-                                                        <button
-                                                            onClick={() => confirmAction('add')}
-                                                            className="flex items-center text-white bg-green-500 p-3 rounded hover:bg-green-600 transition"
-                                                        >
-                                                            <HiOutlinePlusCircle className="mr-2"/> Add Stock
-                                                        </button>
-                                                        <button
-                                                            onClick={() => confirmAction('subtract')}
-                                                            className="flex items-center text-white bg-red-500 p-3 rounded hover:bg-red-600 transition"
-                                                        >
-                                                            <HiOutlineMinusCircle className="mr-2"/> Subtract Stock
-                                                        </button>
-                                                    </div>
+                                            {/* Add/Subtract Stock and Add Row Buttons */}
+                                            <div className="flex justify-between items-center pt-4 mt-4 border-t border-gray-300">
+                                                {/* Add Row Button */}
+                                                <button
+                                                    onClick={handleAddRow}
+                                                    className="text-white bg-blue-500 px-4 py-2 rounded hover:bg-blue-600 transition"
+                                                >
+                                                    + Add Row
+                                                </button>
+
+                                                {/* Add/Subtract Stock Buttons */}
+                                                <div className="flex gap-4">
+                                                    <button
+                                                        onClick={() => confirmAction('add')}
+                                                        className="flex items-center text-white bg-green-500 px-4 py-2 rounded hover:bg-green-600 transition"
+                                                    >
+                                                        <HiOutlinePlusCircle className="mr-2" /> Add Stock
+                                                    </button>
+                                                    <button
+                                                        onClick={() => confirmAction('subtract')}
+                                                        className="flex items-center text-white bg-red-500 px-4 py-2 rounded hover:bg-red-600 transition"
+                                                    >
+                                                        <HiOutlineMinusCircle className="mr-2" /> Subtract Stock
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
                                     )}
                                 </div>
                             )}
+
                         </div>
                     )}
                 </div>

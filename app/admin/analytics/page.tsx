@@ -22,6 +22,7 @@ type FoodItem = {
 
 const StockMonitor = () => {
     const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [pieChartData, setPieChartData] = useState<any>({
         labels: [],
         datasets: [{
@@ -216,6 +217,10 @@ const StockMonitor = () => {
         );
     };
 
+    const filteredFoodItems = foodItems.filter(item =>
+        item.foodName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     return (
         <div className="min-h-screen flex bg-gray-100">
             <Sidenav setIsSidenavOpen={setIsSidenavOpen} />
@@ -224,8 +229,17 @@ const StockMonitor = () => {
                 <h2 className="text-3xl font-bold mb-8 text-center text-gray-800">Stock Level Monitoring</h2>
 
                 <div className="bg-white shadow-lg rounded-lg p-8 mb-10 text-black">
+                    <div className="mb-4">
+                        <input
+                            type="text"
+                            placeholder="Search food items..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
                     <DataTable
-                        value={foodItems.slice((currentPageTable - 1) * itemsPerPage, currentPageTable * itemsPerPage)}
+                        value={filteredFoodItems.slice((currentPageTable - 1) * itemsPerPage, currentPageTable * itemsPerPage)}
                         className="p-datatable-gridlines mb-6"
                         style={{ border: '1px solid #e5e7eb', borderRadius: '0.5rem', overflow: 'hidden' }}
                     >
@@ -258,7 +272,7 @@ const StockMonitor = () => {
                             headerClassName="bg-gray-100 text-gray-700 border-b border-gray-200 p-3"
                         />
                     </DataTable>
-                    {renderPagination(currentPageTable, Math.ceil(foodItems.length / itemsPerPage), setCurrentPageTable)}
+                    {renderPagination(currentPageTable, Math.ceil(filteredFoodItems.length / itemsPerPage), setCurrentPageTable)}
                 </div>
 
                 <h2 className="text-2xl font-semibold mb-6 text-center text-gray-800">Stock Level Chart</h2>
