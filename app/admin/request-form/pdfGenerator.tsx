@@ -33,7 +33,6 @@ export const createPdf = async (
 
     try {
         // Fetch and embed the logo
-        // const logoUrl = new URL('/logo.png', 'http://localhost:3000'); // Replace with actual URL
         const logoUrl = new URL('/logo.png', 'https://hims-five.vercel.app'); // Replace with actual URL
         const response = await fetch(logoUrl.href);
         if (!response.ok) throw new Error('Failed to fetch logo');

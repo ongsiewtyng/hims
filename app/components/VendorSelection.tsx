@@ -352,7 +352,7 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
                 } catch (error) {
                     console.error('Error fetching items for week:', week, error);
                     setError(`Error fetching items for week ${week}`);
-                    continue;
+
                 }
             }
 
@@ -428,7 +428,7 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
 
 
     // Function to update the status in Firebase Realtime Database
-    const updateRequestStatus = async (week) => {
+    const updateRequestStatus = async (week : any) => {
         try {
             console.log("Starting status update process");
 

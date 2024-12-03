@@ -46,10 +46,6 @@ const StockMonitor = () => {
     const itemsPerPage = 10;
     const maxPageButtons = 3;
 
-    const showSuccess = useCallback(() => {
-        toastRef.current?.show({ severity: 'success', summary: 'Data Loaded', detail: 'Stock levels fetched successfully!', life: 3000 });
-    }, []);
-
     useEffect(() => {
         const fetchFoodItems = async () => {
             try {
@@ -328,7 +324,7 @@ const StockMonitor = () => {
                             </thead>
                             <tbody>
                                 {pieChartData.labels.length > 0 ? (
-                                    pieChartData.labels.map((month, index) => (
+                                    pieChartData.labels.map((month:any, index:any) => (
                                         <tr key={month} className="border-b">
                                             <td className="py-2 px-4 text-gray-700">{month}</td>
                                             <td className="py-2 px-4 text-gray-700">{pieChartData.datasets[0].data[index]}</td>

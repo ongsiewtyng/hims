@@ -1,12 +1,13 @@
 'use client'
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from 'next/navigation';
-import { auth,getUserRole } from '../services/firebase';
-import {HiCheckCircle, HiEye, HiEyeOff, HiXCircle} from "react-icons/hi";
+import { auth, getUserRole } from '../services/firebase';
+import { HiCheckCircle, HiEye, HiEyeOff, HiXCircle } from "react-icons/hi";
 import { setCookie, getCookie } from 'cookies-next';
 import { getDatabase, ref, get } from 'firebase/database';
 import '../components/loader.css';
+import Image from 'next/image';
 
 export default function SignIn() {
     const router = useRouter();
@@ -35,18 +36,17 @@ export default function SignIn() {
         }
     }
 
-    // Function to get user information including role and requiredApproval
-    const getUserDocument = async (uid : any) => {
-        const db = getDatabase(); // Get the database instance
-        const userRef = ref(db, `users/${uid}`); // Reference to the user's node
+    const getUserDocument = async (uid: any) => {
+        const db = getDatabase();
+        const userRef = ref(db, `users/${uid}`);
 
         try {
-            const snapshot = await get(userRef); // Fetch the data
+            const snapshot = await get(userRef);
             if (snapshot.exists()) {
-                return snapshot.val(); // Return the user data
+                return snapshot.val();
             } else {
                 console.error('No user data available');
-                return null; // User data not found
+                return null;
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -63,27 +63,23 @@ export default function SignIn() {
             const user = userCredential.user;
 
             if (user) {
-                // Get the user's ID token and store it in a cookie
                 const token = await user.getIdToken();
-                const expirationTime = new Date().getTime() + 3600 * 1000; // 1 hour from now
-                setCookie('token', token, { maxAge: 60 * 60 * 24 }); // Store for 1 day
-                setCookie('tokenExpiration', expirationTime, { maxAge: 60 * 60 * 24 }); // Store for 1 day
+                const expirationTime = new Date().getTime() + 3600 * 1000;
+                setCookie('token', token, { maxAge: 60 * 60 * 24 });
+                setCookie('tokenExpiration', expirationTime, { maxAge: 60 * 60 * 24 });
 
-                // Fetch the user's role and requiredApproval status
-                const userInfo = await getUserDocument(user.uid); // Fetch user data here
+                const userInfo = await getUserDocument(user.uid);
                 console.log('User Info:', userInfo);
                 if (userInfo) {
                     const { roles, requiredApproval } = userInfo;
 
-                    // Check if approval is required
                     if (requiredApproval == true) {
                         setError('Your account requires approval to log in.');
                         setTimeout(() => setError(null), 5000);
                         setLoading(false);
-                        return; // Prevent login
+                        return;
                     } else {
                         setSuccess('Login successful! Redirecting...');
-                        // Redirect based on role
                         if (roles === 'Admin') {
                             router.push('/admin/home');
                         } else if (roles === 'Lecturer') {
@@ -119,8 +115,11 @@ export default function SignIn() {
                 </div>
             )}
             <div className="max-w-md w-full space-y-8">
+                <div className="flex justify-center">
+                    <Image src="/logo2.png" alt="Logo" width={150} height={150} />
+                </div>
                 <div>
-                    <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">HIMS Login</h2>
+                    <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Login</h2>
                 </div>
                 <form className="mt-8 space-y-7" onSubmit={handleSignIn}>
                     <div className="rounded-md shadow-sm -space-y-px">
