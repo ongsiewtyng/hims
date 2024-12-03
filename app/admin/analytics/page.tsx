@@ -60,7 +60,6 @@ const StockMonitor = () => {
                         vendor: items[key].vendor,
                     }));
                     setFoodItems(formattedItems);
-                    showSuccess();
                 } else {
                     console.log("No data available");
                 }
@@ -70,7 +69,7 @@ const StockMonitor = () => {
         };
 
         fetchFoodItems();
-    }, [showSuccess]);
+    }, []);
 
     useEffect(() => {
         const fetchData = async () => {
