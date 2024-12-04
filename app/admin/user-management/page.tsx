@@ -21,7 +21,9 @@ const UserManagement = () => {
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [pendingUsers, setPendingUsers] = useState<User[]>([]);
     const [deletingUsers, setDeletingUsers] = useState<string[]>([]);
-    const [deleteUserModal, setDeleteUserModal] = useState(false);
+    const [isEnvConfigModalOpen, setIsEnvConfigModalOpen] = useState(false);
+    const [email, setEmail] = useState(''); // Email to be auto-filled
+    const [appPassword, setAppPassword] = useState(''); // App password to be entered
     const [alertMessage, setAlertMessage] = useState<string | null>(null); // Alert message state
     const [currentUser, setCurrentUser] = useState<User | null>(null); // Store current auth user
 
@@ -181,6 +183,50 @@ const UserManagement = () => {
         }
     };
 
+    useEffect(() => {
+        if (currentUser?.email) {
+            setEmail(currentUser.email);
+        }
+    }, [currentUser]);
+
+    const handleEnvConfigSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Check super admin status before allowing configuration
+        if (!currentUser?.isSuperAdmin) {
+            setAlertMessage('Access Denied: Only Super Administrators can modify environment configuration.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/updateEnv', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, appPassword }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            if (response.ok) {
+                setAlertMessage('Environment configuration updated successfully!');
+                setIsEnvConfigModalOpen(false);
+            } else {
+                const data = await response.json();
+                setAlertMessage(data.message || 'Failed to update configuration. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error updating configuration:', error);
+            setAlertMessage('Failed to update configuration. Please try again.');
+        }
+
+        // Clear alert after 5 seconds
+        setTimeout(() => setAlertMessage(null), 5000);
+    };
+
     // Calculate paginated users
     const indexOfLastUser = currentPage * usersPerPage;
     const indexOfFirstUser = indexOfLastUser - usersPerPage;
@@ -198,12 +244,82 @@ const UserManagement = () => {
                 {/* Title and Delete Button Container */}
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-semibold text-gray-800">User Management</h1>
+                    <button
+                        onClick={() => setIsEnvConfigModalOpen(true)}
+                        className="text-blue-500 hover:bg-blue-50 p-2 rounded-full"
+                    >
+                        Configure Environment
+                    </button>
                 </div>
 
                 {/* Alert Message */}
                 {alertMessage && (
                     <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">
                         {alertMessage}
+                    </div>
+                )}
+
+                {/* Environment Configuration Modal */}
+                {isEnvConfigModalOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-8 rounded-lg shadow-xl w-96 text-black">
+                            <h2 className="text-2xl font-semibold mb-6">Environment Configuration</h2>
+                            <form onSubmit={handleEnvConfigSave}>
+                                <div className="mb-4">
+                                    <label className="block text-gray-700 mb-2">Email</label>
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full px-3 py-2 border rounded-md bg-gray-100"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        This is your Google account email (auto-filled)
+                                    </p>
+                                </div>
+                                <div className="mb-4">
+                                    <label className="block text-gray-700 mb-2">App Password</label>
+                                    <input
+                                        type="password"
+                                        value={appPassword}
+                                        onChange={(e) => setAppPassword(e.target.value)}
+                                        className="w-full px-3 py-2 border rounded-md"
+                                        placeholder="Enter your Google App Password"
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Generate this in your Google Account security settings
+                                    </p>
+                                </div>
+
+                                <div className="flex justify-end space-x-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEnvConfigModalOpen(false)}
+                                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-blue-500 text-white rounded-md"
+                                    >
+                                        Save Configuration
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div className="mt-4 bg-yellow-50 p-3 rounded-md">
+                                <h3 className="font-semibold text-yellow-700 mb-2">How to Generate App Password</h3>
+                                <ol className="list-decimal list-inside text-xs text-yellow-800">
+                                    <li>Go to your Google Account</li>
+                                    <li>Navigate to Security settings</li>
+                                    <li>Search App Passwords</li>
+                                    <li>Click on it and create a name</li>
+                                    <li>Generate and copy the app password</li>
+                                </ol>
+                            </div>
+                        </div>
                     </div>
                 )}
 
