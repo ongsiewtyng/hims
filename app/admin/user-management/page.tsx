@@ -192,7 +192,6 @@ const UserManagement = () => {
     const handleEnvConfigSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Check super admin status before allowing configuration
         if (!currentUser?.isSuperAdmin) {
             setAlertMessage('Access Denied: Only Super Administrators can modify environment configuration.');
             return;
@@ -207,23 +206,20 @@ const UserManagement = () => {
                 body: JSON.stringify({ email, appPassword }),
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
             if (response.ok) {
                 setAlertMessage('Environment configuration updated successfully!');
                 setIsEnvConfigModalOpen(false);
             } else {
                 const data = await response.json();
-                setAlertMessage(data.message || 'Failed to update configuration. Please try again.');
+                setAlertMessage(data.message || `Failed to update configuration. Status: ${response.status}`);
             }
         } catch (error) {
             console.error('Error updating configuration:', error);
             setAlertMessage('Failed to update configuration. Please try again.');
         }
 
-        // Clear alert after 5 seconds
+        setEmail(currentUser?.email || ''); // Reset email input
+        setAppPassword(''); // Clear app password input
         setTimeout(() => setAlertMessage(null), 5000);
     };
 
