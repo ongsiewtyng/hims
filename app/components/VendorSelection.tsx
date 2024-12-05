@@ -43,6 +43,7 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
     const [requests, setRequests] = useState<Request[]>([]);
     const [matchingRequests, setMatchingRequests] = useState<Request[]>([]);
     const [selectedPreviews, setSelectedPreviews] = useState<{ [week: string]: string }>({});
+    const [customMessage, setCustomMessage] = useState('');
 
     useEffect(() => {
         const fetchRequests = async () => {
@@ -67,6 +68,15 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
         const vendorId = e.target.value;
         console.log('Selected vendor:', vendorId);
         const vendor = vendors.find((v) => v.id === vendorId) || null;
+
+        // Check if a week is selected for the previously selected vendor
+        if (selectedVendor && !weekSelections[selectedVendor.id]?.length) {
+            // Replace the previous vendor with the new one
+            const updatedSelections = { ...weekSelections };
+            delete updatedSelections[selectedVendor.id];
+            setWeekSelections(updatedSelections);
+        }
+
         setSelectedVendor(vendor);
 
         if (vendor) {
@@ -388,6 +398,7 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
                         items: groupedItems,
                         pdfBuffer,
                         pdfFileName,
+                        customMessage,
                     }),
                 });
 
@@ -582,6 +593,17 @@ const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({ isOpen, onC
                             ))}
                         </div>
                     ))}
+
+                    <div className="mb-4">
+                        <label className="block mb-2 text-gray-700">Add Remarks in the Email:</label>
+                        <textarea
+                            value={customMessage}
+                            onChange={(e) => setCustomMessage(e.target.value)}
+                            className="w-full border border-gray-300 p-2 rounded mt-1"
+                            rows={4}
+                        />
+                    </div>
+
                     <span
                         onClick={handleAddWeek}
                         className="text-blue-500 cursor-pointer mr-4 hover:no-underline mb-4"
