@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ref, onValue } from "firebase/database";
-import { HiOutlineSearch } from "react-icons/hi";
+import {ref, onValue, update} from "firebase/database";
+import {HiOutlineSearch, HiOutlineTrash} from "react-icons/hi";
 import Modal from "../components/requestModal";
 import { database } from "../services/firebase";
+import "../components/shake.css";
 
 interface Request {
     dateCreated: string;
@@ -108,6 +109,38 @@ const ProgressTracker = () => {
         return acc;
     }, {});
 
+    const handleArchive = (requestId: string) => {
+        const requestRef = ref(database, `requests/${requestId}`);
+        update(requestRef, { archived: true })
+            .then(() => {
+                console.log(`Request ${requestId} archived successfully.`);
+                setRequests((prevRequests) =>
+                    prevRequests.filter((request) => request.requestId !== requestId)
+                );
+            })
+            .catch((error) => {
+                console.error(`Failed to archive request ${requestId}:`, error);
+            });
+    };
+
+    useEffect(() => {
+        const archiveRequests = () => {
+            const now = new Date().getTime();
+            requests.forEach((request) => {
+                if (request.status === 'Request Successfully') {
+                    const requestDate = new Date(request.dateCreated).getTime();
+                    const oneDay = 24 * 60 * 60 * 1000;
+                    if (now - requestDate >= oneDay) {
+                        handleArchive(request.requestId);
+                    }
+                }
+            });
+        };
+
+        const interval = setInterval(archiveRequests, 60 * 60 * 1000); // Check every hour
+        return () => clearInterval(interval);
+    }, [requests]);
+
     return (
         <div>
             {/* Search bar */}
@@ -135,60 +168,61 @@ const ProgressTracker = () => {
                     {/* Requests Table */}
                     <table className="bg-white p-8 rounded-2xl shadow-2xl w-full">
                         <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                                    Submission Date
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                                    Requester
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                                    PIC & Contact Number
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                                    Department
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                                    Status
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                                    Download
-                                </th>
-                            </tr>
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                                Submission Date
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                                Requester
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                                PIC & Contact Number
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                                Department
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                                Download
+                            </th>
+                        </tr>
                         </thead>
                         <tbody>
-                            {groupedRequests[week].map((request, index) => (
-                                <tr
-                                    key={index}
-                                    className="cursor-pointer"
-                                    onClick={() => {
-                                        console.log("Selected Request:", request.requestId);
-                                        setSelectedRequest(request);
-                                    }}
+                        {groupedRequests[week].map((request, index) => (
+                            <tr
+                                key={index}
+                                className="cursor-pointer"
+                                onClick={() => {
+                                    console.log("Selected Request:", request.requestId);
+                                    setSelectedRequest(request);
+                                }}
+                            >
+                                <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">
+                                    {request.dateCreated}
+                                </td>
+                                <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">
+                                    {request.requester}
+                                </td>
+                                <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">
+                                    {request.picContact}
+                                </td>
+                                <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">
+                                    {request.department}
+                                </td>
+                                <td
+                                    className="text-gray-600 px-6 py-4 whitespace-nowrap border"
+                                    style={{color: statusColors[request.status] || '#6b7280'}}
                                 >
-                                    <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">
-                                        {request.dateCreated}
-                                    </td>
-                                    <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">
-                                        {request.requester}
-                                    </td>
-                                    <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">
-                                        {request.picContact}
-                                    </td>
-                                    <td className="text-gray-600 px-6 py-4 whitespace-nowrap border">
-                                        {request.department}
-                                    </td>
-                                    <td
-                                        className="text-gray-600 px-6 py-4 whitespace-nowrap border"
-                                        style={{ color: statusColors[request.status] || '#6b7280' }}
-                                    >
-                                        <span style={circleStyles(statusColors[request.status])}></span>
-                                        {request.status}
-                                    </td>
-                                    <td
-                                        className="text-gray-600 px-6 py-4 whitespace-nowrap border"
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
+                                    <span style={circleStyles(statusColors[request.status])}></span>
+                                    {request.status}
+                                </td>
+                                <td
+                                    className="text-gray-600 px-6 py-4 whitespace-nowrap border"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="flex items-center">
                                         {request.downloadLink ? (
                                             <a href={request.downloadLink} className="text-blue-500">
                                                 Download
@@ -196,9 +230,17 @@ const ProgressTracker = () => {
                                         ) : (
                                             'N/A'
                                         )}
-                                    </td>
-                                </tr>
-                            ))}
+                                        <HiOutlineTrash
+                                            className="h-5 w-5 text-red-500 cursor-pointer ml-auto hover:text-red-600"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleArchive(request.requestId);
+                                            }}
+                                        />
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
                         </tbody>
                     </table>
                 </div>
