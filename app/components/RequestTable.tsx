@@ -66,20 +66,23 @@ const ProgressTracker = () => {
         onValue(requestsRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                const formattedData: Request[] = Object.keys(data).map(key => ({
-                    dateCreated: formatDate(data[key].dateCreated),
-                    requester: toTitleCase(data[key].sectionA['2'][5]),
-                    picContact: data[key].sectionA['3'][5],
-                    department: data[key].sectionA['4'][5],
-                    entity: data[key].sectionA['5'][5],
-                    status: data[key].status,
-                    downloadLink: data[key].downloadLink || null,
-                    excelData: data[key].excelData || [],
-                    sectionA: data[key].sectionA || [],
-                    requestId: key,
-                    week: data[key].week,
-                    userID: data[key].userID || null
-                }));
+                const formattedData: Request[] = Object.keys(data)
+                    .map(key => ({
+                        dateCreated: formatDate(data[key].dateCreated),
+                        requester: toTitleCase(data[key].sectionA['2'][5]),
+                        archived: data[key].archived,
+                        picContact: data[key].sectionA['3'][5],
+                        department: data[key].sectionA['4'][5],
+                        entity: data[key].sectionA['5'][5],
+                        status: data[key].status,
+                        downloadLink: data[key].downloadLink || null,
+                        excelData: data[key].excelData || [],
+                        sectionA: data[key].sectionA || [],
+                        requestId: key,
+                        week: data[key].week,
+                        userID: data[key].userID || null
+                    }))
+                    .filter(request => !request.archived); // Filter out archived requests
                 setRequests(formattedData);
                 console.log('Requests:', formattedData);
             } else {
