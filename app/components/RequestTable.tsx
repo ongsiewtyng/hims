@@ -69,11 +69,11 @@ const ProgressTracker = () => {
                 const formattedData: Request[] = Object.keys(data)
                     .map(key => ({
                         dateCreated: formatDate(data[key].dateCreated),
-                        requester: toTitleCase(data[key].sectionA['2'][5]),
+                        requester: toTitleCase(data[key].sectionA[2].value),
                         archived: data[key].archived,
-                        picContact: data[key].sectionA['3'][5],
-                        department: data[key].sectionA['4'][5],
-                        entity: data[key].sectionA['5'][5],
+                        picContact: data[key].sectionA[3].value,
+                        department: data[key].sectionA[4].value,
+                        entity: data[key].sectionA[5].value,
                         status: data[key].status,
                         downloadLink: data[key].downloadLink || null,
                         excelData: data[key].excelData || [],

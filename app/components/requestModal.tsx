@@ -243,7 +243,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50 text-black">
             <div className="bg-black bg-opacity-50 absolute inset-0" onClick={onClose}></div>
-            <div className="bg-white p-6 rounded-lg shadow-lg z-10 w-full max-w-6xl mx-4 relative">
+            <div className="bg-white p-6 rounded-lg shadow-lg z-10 w-full max-w-7xl mx-4 relative max-h-[80vh] overflow-y-auto">
                 <div className="absolute top-4 right-4 flex items-center space-x-2">
                     {/* Blinking Status Indicator */}
                     <BlinkingStatusIndicator status={status}/>
@@ -273,7 +273,7 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                                             key={index}
                                             className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
                                         >
-                                            {data[0]} {/* Header */}
+                                            {data.header}
                                         </th>
                                     ))}
                             </tr>
@@ -286,9 +286,9 @@ const Modal: React.FC<RequestModalProps> = ({ isOpen, onClose, request }) => {
                                             key={index}
                                             className="py-3 px-4 border-b text-sm text-gray-700"
                                         >
-                                            {data[0] === "Delivery Date:"
-                                                ? excelDateToJSDate(data[5])  // Convert and format the delivery date
-                                                : data[5]} {/* For other fields, just display data[5] */}
+                                            {data.header === "Delivery Date:"
+                                                ? excelDateToJSDate(data.value)  // Convert and format the delivery date
+                                                : data.value} {/* For other fields, just display data[5] */}
                                         </td>
                                     ))}
                                 </tr>

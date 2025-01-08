@@ -332,7 +332,9 @@ export default function Home() {
             if (data) {
                 const requestsArray = Object.keys(data).map(key => {
                     const requestData = data[key];
-                    const requesterName = requestData.sectionA?.[2]?.[5] || 'Unknown';
+                    const sectionA = requestData.sectionA || [];
+                    const header = sectionA.find((item: any) => item.header === 'Requestor');
+                    const requesterName = header?.value || 'Unknown';
                     return {
                         id: key,
                         ...requestData,

@@ -132,8 +132,74 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
         });
     };
 
+    // const processExcelData = (data: ArrayBuffer, fileIndex: number, downloadURL: string) => {
+    //     const excelDateToFormattedDate = (serial: number): string => {
+    //         const utcDays = Math.floor(serial - 25569);
+    //         const date = new Date(utcDays * 86400 * 1000);
+    //         const dd = String(date.getDate()).padStart(2, '0');
+    //         const mm = String(date.getMonth() + 1).padStart(2, '0');
+    //         const yyyy = date.getFullYear();
+    //         return `${dd}/${mm}/${yyyy}`;
+    //     };
+    //
+    //     const wb = XLSX.read(new Uint8Array(data), { type: 'array' });
+    //     const ws_name = wb.SheetNames[0];
+    //     const ws = wb.Sheets[ws_name];
+    //     const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+    //
+    //     const sectionA = jsonData.slice(5, 11);
+    //     const sectionAHeaders = sectionA.map(row => row[0].replace(':', '').trim());
+    //     console.log(sectionA);
+    //     console.log(sectionAHeaders);
+    //     const result: { [key: string]: any } = {};
+    //     sectionA.forEach((row) => {
+    //         const header = row[0].replace(':', '').trim();
+    //         let value = row[row.length - 1];
+    //         if (header === 'Delivery Date' && typeof value === 'number') {
+    //             value = excelDateToFormattedDate(value);
+    //         }
+    //         result[header] = value;
+    //     });
+    //     const extractedValues = Object.values(result).map(value => String(value));
+    //
+    //     const headerRow = jsonData[13];
+    //     const dataRows = jsonData.slice(14).map((row) => {
+    //         let rowData: { [key: string]: any } = {};
+    //         headerRow.forEach((header, index) => {
+    //             let cellValue = row[index];
+    //             if (header === 'Delivery Date' && typeof cellValue === 'number') {
+    //                 cellValue = excelDateToFormattedDate(cellValue);
+    //             }
+    //             rowData[header] = cellValue;
+    //         });
+    //         return rowData;
+    //     });
+    //
+    //     let lastVendor = "";
+    //     const processedDataRows = dataRows.map((row) => {
+    //         let isEmpty = true;
+    //         for (const key in row) {
+    //             if (row[key] !== undefined && row[key] !== "") {
+    //                 isEmpty = false;
+    //                 if (key === 'Suggested Vendor ' && (row[key] === undefined || row[key] === "")) {
+    //                     row[key] = lastVendor;
+    //                 } else if (key === 'Suggested Vendor ' && row[key] !== undefined && row[key] !== "") {
+    //                     lastVendor = row[key];
+    //                 }
+    //             }
+    //         }
+    //         if (row['Suggested Vendor '] === undefined || row['Suggested Vendor '] === "") {
+    //             row['Suggested Vendor '] = lastVendor;
+    //         }
+    //         return isEmpty ? null : row;
+    //     }).filter(row => row !== null);
+    //
+    //     setAllData(prevAllData => [...prevAllData, dataRows]);
+    //     onExcelDataChange(sectionA,sectionAHeaders, headerRow, processedDataRows, extractedValues, downloadURL);
+    // };
     const processExcelData = (data: ArrayBuffer, fileIndex: number, downloadURL: string) => {
         const excelDateToFormattedDate = (serial: number): string => {
+            if (!serial) return "";
             const utcDays = Math.floor(serial - 25569);
             const date = new Date(utcDays * 86400 * 1000);
             const dd = String(date.getDate()).padStart(2, '0');
@@ -143,57 +209,76 @@ const RequestForm: React.FC<RequestFormProps> = ({ onExcelDataChange }) => {
         };
 
         const wb = XLSX.read(new Uint8Array(data), { type: 'array' });
-        const ws_name = wb.SheetNames[0];
-        const ws = wb.Sheets[ws_name];
+        const wsName = wb.SheetNames[0];
+        const ws = wb.Sheets[wsName];
         const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
 
-        const sectionA = jsonData.slice(5, 11);
-        const result: { [key: string]: any } = {};
-        sectionA.forEach((row) => {
-            const header = row[0].replace(':', '').trim();
-            let value = row[row.length - 1];
-            if (header === 'Delivery Date' && typeof value === 'number') {
-                value = excelDateToFormattedDate(value);
-            }
-            result[header] = value;
-        });
-        const extractedValues = Object.values(result).map(value => String(value));
+        // Extract Section A dynamically
+        const sectionAStartRow = 5; // Starting row for Section A
+        const sectionAEndRow = 11; // Ending row for Section A
+        const sectionA = jsonData.slice(sectionAStartRow, sectionAEndRow).map(row => ({
+            header: row[0]?.replace(':', '').trim() || "",
+            value: row[5] || "",
+        }));
 
-        const headerRow = jsonData[13];
-        const dataRows = jsonData.slice(14).map((row) => {
-            let rowData: { [key: string]: any } = {};
-            headerRow.forEach((header, index) => {
-                let cellValue = row[index];
-                if (header === 'Delivery Date' && typeof cellValue === 'number') {
-                    cellValue = excelDateToFormattedDate(cellValue);
-                }
-                rowData[header] = cellValue;
-            });
-            return rowData;
-        });
+        const sectionAHeaders = sectionA.map(item => item.header);
+        const sectionAValues = sectionA.map(item => item.value);
+
+        // Extract Section C (Table of Items)
+        const headerRow = jsonData[18]; // Row 18 contains headers
+        const dataRows = jsonData.slice(19);
 
         let lastVendor = "";
-        const processedDataRows = dataRows.map((row) => {
-            let isEmpty = true;
-            for (const key in row) {
-                if (row[key] !== undefined && row[key] !== "") {
-                    isEmpty = false;
-                    if (key === 'Suggested Vendor ' && (row[key] === undefined || row[key] === "")) {
-                        row[key] = lastVendor;
-                    } else if (key === 'Suggested Vendor ' && row[key] !== undefined && row[key] !== "") {
-                        lastVendor = row[key];
+        let itemCount = 0; // Counter for the "No" column
+        const tableOfItems: { [key: string]: any }[] = [];
+
+        for (const row of dataRows) {
+            console.log(row);
+            // Check if the row contains a valid description
+            const description = row[headerRow.indexOf("Description of Item ")];
+            if (!description || description.toString().trim() === "") {
+                break; // Stop processing if the description is empty
+            }
+
+            itemCount++; // Increment count for valid items
+
+            const rowData: { [key: string]: any } = {};
+            console.log(rowData);
+            rowData["No"] = itemCount; // Assign the "No" column
+
+            headerRow.forEach((header, columnIndex) => {
+                let value = row[columnIndex];
+
+                // Handle dates
+                if (header === 'ORDER DATE' || header === 'DELIVERY DATE') {
+                    value = typeof value === 'number' ? excelDateToFormattedDate(value) : value;
+                }
+
+                // Handle "Suggested Vendor" field
+                if (header === "Suggested Vendor ") {
+                    if (!value || value.toString().trim() === "") {
+                        value = lastVendor;
+                    } else {
+                        lastVendor = value;
                     }
                 }
-            }
-            if (row['Suggested Vendor '] === undefined || row['Suggested Vendor '] === "") {
-                row['Suggested Vendor '] = lastVendor;
-            }
-            return isEmpty ? null : row;
-        }).filter(row => row !== null);
 
-        setAllData(prevAllData => [...prevAllData, dataRows]);
-        onExcelDataChange(sectionA, headerRow, processedDataRows, extractedValues, downloadURL);
+                rowData[header] = value;
+            });
+
+            // Ensure "No" is not undefined
+            if (rowData["No"] === undefined) {
+                rowData["No"] = itemCount;
+            }
+
+            tableOfItems.push(rowData);
+        }
+
+        // Update the state with extracted data
+        setAllData(prevAllData => [...prevAllData, tableOfItems]);
+        onExcelDataChange(sectionA, sectionAHeaders, headerRow, tableOfItems, sectionAValues, downloadURL);
     };
+
 
     return (
         <div className="relative flex flex-col max-w-xl w-full mt-4">
