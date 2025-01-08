@@ -84,10 +84,11 @@ export default function LecturerItemRequest() {
     };
 
     // Handles new file data
-    const handleExcelDataChange = (sectionA: any[], header: string[], data: any[], extractedValues: any[], downloadURL: string) => {
+    const handleExcelDataChange = (sectionA: any[], sectionAHeaders: string[], header: string[], data: any[], extractedValues: any[], downloadURL: string) => {
 
         const newFileData = {
             sectionA,
+            sectionAHeaders,
             headers: header,
             data,
             extractedValues,
@@ -334,7 +335,7 @@ export default function LecturerItemRequest() {
                                         <table className="min-w-full bg-white shadow-md rounded-lg">
                                             <thead className="bg-gray-100 border-b">
                                             <tr>
-                                                {fileData[currentFileIndex]?.sectionA.map((header: any, index: number) => (
+                                                {fileData[currentFileIndex]?.sectionAHeaders.map((header: any, index: number) => (
                                                     <th key={index}
                                                         className="py-3 px-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                                         {header}
