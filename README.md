@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Hospital Inventory Management System (HIMS)
+A modern web application for managing hospital inventory, built with Next.js and Tailwind CSS.
 
-## Getting Started
+*Live Demo*: [https://hims-five.vercel.app/](https://hims-five.vercel.app/)
 
-First, run the development server:
+## 🚀 Features
 
+- **Inventory Tracking**: Real-time monitoring of medical supplies
+- **User Management**: Role-based access control
+- **Responsive Design**: Works on all devices
+- **Dashboard Analytics**: Visual data representation
+- **Secure Authentication**: Protected routes and sessions
+
+## 🛠️ Tech Stack
+
+- **Framework**: Next.js (App Router)
+- **Styling**: Tailwind CSS
+- **Authentication**: NextAuth.js
+- **Database**: Firebase Realtime Database
+- **UI Components**: Shadcn/ui
+- **Deployment**: Vercel
+- **Form Handling**: React Hook Form
+- **Data Visualization**: Chart.js
+
+## 📦 Getting Started
+
+### Prerequisites
+- Node.js (v18 or later)
+- npm (v9 or later)
+
+### Installation
 ```bash
+# Clone the repository
+git clone https://github.com/ongsiewtyng/hims.git
+cd hims
+
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🔧 Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Create a `.env.local` file with the following variables:
 
-## Learn More
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-domain
+NEXT_PUBLIC_FIREBASE_DATABASE_URL=your-db-url
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-id
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 📂 Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+├── app/               # Next.js app router
+│   ├── api/           # API routes
+│   ├── (auth)/        # Authentication pages
+│   ├── dashboard/     # Protected routes
+│   └── layout.tsx     # Root layout
+├── components/        # Reusable components
+├── lib/               # Utility functions
+├── models/            # MongoDB models
+├── public/            # Static assets
+└── styles/            # Global styles
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## 🚀 Deployment
 
-## Deploy on Vercel
+1. Push your code to GitHub
+2. Create a new project on [Vercel](https://vercel.com/)
+3. Connect your GitHub repository
+4. Add environment variables
+5. Deploy!
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📝 Available Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- `npm run dev` - Start development server
+- `npm run build` - Create production build
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+
+## 🤝 Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+## 📬 Contact
+
+For questions or feedback, please contact:
+**Ong Siew Tyng**
+- Email: cybergenetic1@gmail.com
+- GitHub: [@ongsiewtyng](https://github.com/ongsiewtyng)
