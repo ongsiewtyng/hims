@@ -46,9 +46,8 @@ const ReqTable = ({ userID }) => {
         return new Date(date).toLocaleString('en-US', options);
     };
 
-    const toTitleCase = (str: string): string => str
-        .toLowerCase()
-        .replace(/\b\w/g, char => char.toUpperCase());
+    const toTitleCase = (str: string | undefined | null): string =>
+        str ? str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) : '';
 
     const statusColors = {
         Pending: '#f59e0b', // Yellow
