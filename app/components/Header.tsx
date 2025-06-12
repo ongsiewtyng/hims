@@ -40,7 +40,7 @@ const Header = () => {
                         priority
                     />
                 </div>
-                <h1 className="text-2xl font-bold text-gray-800 tracking-wide">HIMS Dashboard</h1>
+                <h1 className="text-2xl font-bold text-gray-800 tracking-wide">Dashboard</h1>
             </div>
 
             {/* Right: Action buttons */}
