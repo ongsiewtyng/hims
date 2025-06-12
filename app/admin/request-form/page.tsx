@@ -104,7 +104,6 @@ export default function AdminItemRequest() {
         <div className="min-h-screen flex bg-gray-50">
             <Sidenav setIsSidenavOpen={setIsSidenavOpen} />
             <div className={`flex-1 bg-white-50 transition-all duration-300 ${isSidenavOpen ? 'ml-64' : 'ml-20'} p-8`}>
-                <Header />
                 <div className="flex-1 min-h-screen flex-col items-center justify-center">
                     <div className="flex items-center justify-center h-16 text-black">
                         <h1 className="text-2xl font-bold">Item Request</h1>
