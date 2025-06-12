@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
 import UploadItems from "./UploadItems";
-import {get, push, ref, update, set} from "@firebase/database";
+import { get, push, ref, update, set } from "@firebase/database";
 import { database } from "../services/firebase";
-
 
 interface UploadItemsModalProps {
     uploadItemsModal: boolean;
@@ -27,7 +26,7 @@ const UploadItemsModal: React.FC<UploadItemsModalProps> = ({ uploadItemsModal, s
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
 
-    async function getVendorId(vendor: string): Promise<string | null> {
+    const getVendorId = async (vendor: string): Promise<string | null> => {
         try {
             const vendorsRef = await get(ref(database, 'vendors'));
             const vendorsData = vendorsRef.val();
@@ -43,67 +42,46 @@ const UploadItemsModal: React.FC<UploadItemsModalProps> = ({ uploadItemsModal, s
             console.error('Error getting vendor ID:', error);
             return null;
         }
-    }
+    };
 
     const handleExcelDataChange = (data: any) => {
         setAllVendorsData(data);
-        setActiveTab(Object.keys(data)[0]); // Set the first vendor as the active tab by default
+        setActiveTab(Object.keys(data)[0]);
     };
 
-    const handleTabClick = (vendor: string) => {
-        setActiveTab(vendor);
-    };
+    const handleTabClick = (vendor: string) => setActiveTab(vendor);
 
-    const checkForDuplicates = async (foodName: string): Promise<{ isDuplicate: boolean, itemKey?: string }> => {
-        try {
-            const dataRef = ref(database, 'foodItems/');
-            const snapshot = await get(dataRef);
-            const existingData = snapshot.val();
-
-            if (existingData) {
-                const existingItems = Object.entries(existingData) as [string, VendorData][];
-                for (const [key, item] of existingItems) {
-                    if (item.foodName === foodName) {
-                        return { isDuplicate: true, itemKey: key };
-                    }
-                }
-            }
-
-            return { isDuplicate: false };
-        } catch (error) {
-            console.error('Error checking for duplicates:', error);
-            return { isDuplicate: false };
+    const checkForDuplicates = async (): Promise<Record<string, string>> => {
+        const snapshot = await get(ref(database, 'foodItems/'));
+        const existingData = snapshot.val();
+        const duplicateMap: Record<string, string> = {};
+        if (existingData) {
+            Object.entries(existingData).forEach(([key, item]: any) => {
+                duplicateMap[item.foodName] = key;
+            });
         }
+        return duplicateMap;
     };
 
-
-    const closeModal = (delay: number) => {
-        setTimeout(() => {
-            setUploadItemsModal(false);
-        }, delay);
-    }
+    const closeModal = (delay: number) => setTimeout(() => setUploadItemsModal(false), delay);
 
     const saveFoodItems = async (excelData: any) => {
         setLoading(true);
-        setError(null); // Clear previous error
+        setError(null);
 
         try {
             const updatePromises = [];
             const categoryPromises = [];
             const vendorPromises = [];
-
             const processedCategories = new Set<string>();
 
-            // Retrieve existing categories and vendors from the database
             const existingCategoriesSnapshot = await get(ref(database, 'categories/'));
-            const existingCategories = existingCategoriesSnapshot.exists()
-                ? existingCategoriesSnapshot.val()
-                : {};
+            const existingCategories = existingCategoriesSnapshot.exists() ? existingCategoriesSnapshot.val() : {};
 
             const existingVendorsSnapshot = await get(ref(database, 'vendors/'));
-            const existingVendors = existingVendorsSnapshot.exists()
-                ? existingVendorsSnapshot.val()
-                : {};
+            const existingVendors = existingVendorsSnapshot.exists() ? existingVendorsSnapshot.val() : {};
+
+            const duplicateMap = await checkForDuplicates();
 
             for (const vendorName of Object.keys(excelData)) {
                 const vendorData = excelData[vendorName].data;
@@ -113,71 +91,61 @@ const UploadItemsModal: React.FC<UploadItemsModalProps> = ({ uploadItemsModal, s
 
                 if (!existingVendorKey) {
                     const newVendorKey = push(ref(database, 'vendors/')).key;
-
-                    const vendorSavePromise = set(ref(database, `vendors/${newVendorKey}`), {
+                    vendorPromises.push(set(ref(database, `vendors/${newVendorKey}`), {
                         id: newVendorKey,
                         name: vendorName,
                         email: "unknown@example.com",
-                    });
-                    vendorPromises.push(vendorSavePromise);
+                    }));
                 }
 
                 for (const item of vendorData) {
                     const foodName = item["Items"]?.trim();
                     const unit = item["Unit"]?.trim()?.toLowerCase() || "nos";
-                    const stocks = item["Quantity Left"] || "0";
+                    const stocks = parseFloat(item["Stocks"]) || 0;
 
-                    if (foodName && unit) {
-                        if (item.Category) {
-                            currentCategory = item.Category;
-                        }
+                    if (!foodName || !unit) continue;
 
-                        const { isDuplicate, itemKey } = await checkForDuplicates(foodName);
+                    if (item.Category) currentCategory = item.Category;
 
-                        if (isDuplicate && itemKey) {
-                            const updatePromise = update(ref(database, `foodItems/${itemKey}`), {
-                                stocks,
-                                unit,
-                                vendor: vendorName,
-                                category: currentCategory || "Unknown",
-                                dateUpdated: new Date().toISOString(),
-                            });
-                            updatePromises.push(updatePromise);
-                        } else {
-                            const savePromise = push(ref(database, 'foodItems/'), {
-                                archive: false,
-                                dateUpdated: new Date().toISOString(),
-                                foodName,
-                                stocks,
-                                unit,
-                                vendor: vendorName,
-                                category: currentCategory || "Unknown",
-                            });
-                            updatePromises.push(savePromise);
-                        }
+                    const existingKey = duplicateMap[foodName];
 
-                        // Ensure category processing occurs correctly
-                        if (currentCategory && !processedCategories.has(currentCategory)) {
-                            processedCategories.add(currentCategory);
+                    if (existingKey) {
+                        updatePromises.push(update(ref(database, `foodItems/${existingKey}`), {
+                            stocks,
+                            unit,
+                            vendor: vendorName,
+                            category: currentCategory || "Unknown",
+                            dateUpdated: new Date().toISOString(),
+                        }));
+                    } else {
+                        updatePromises.push(push(ref(database, 'foodItems/'), {
+                            archive: false,
+                            dateUpdated: new Date().toISOString(),
+                            foodName,
+                            stocks,
+                            unit,
+                            vendor: vendorName,
+                            category: currentCategory || "Unknown",
+                        }));
+                    }
 
-                            const vendorId = await getVendorId(vendorName);
+                    if (currentCategory && !processedCategories.has(currentCategory)) {
+                        processedCategories.add(currentCategory);
+                        const vendorId = await getVendorId(vendorName);
 
-                            if (vendorId) {
-                                const existingCategoryKey = Object.keys(existingCategories).find(
-                                    key => existingCategories[key].name === currentCategory && existingCategories[key].vendor === vendorName
-                                );
+                        if (vendorId) {
+                            const existingCategoryKey = Object.keys(existingCategories).find(
+                                key => existingCategories[key].name === currentCategory && existingCategories[key].vendor === vendorName
+                            );
 
-                                if (!existingCategoryKey) {
-                                    const categoryKey = push(ref(database, 'categories/')).key;
-
-                                    const categoryUpdatePromise = set(ref(database, `categories/${categoryKey}`), {
-                                        id: vendorId, // Use vendorId as ID
-                                        name: currentCategory,
-                                        vendor: vendorName,
-                                        dateUpdated: new Date().toISOString()
-                                    });
-                                    categoryPromises.push(categoryUpdatePromise);
-                                }
+                            if (!existingCategoryKey) {
+                                const categoryKey = push(ref(database, 'categories/')).key;
+                                categoryPromises.push(set(ref(database, `categories/${categoryKey}`), {
+                                    id: vendorId,
+                                    name: currentCategory,
+                                    vendor: vendorName,
+                                    dateUpdated: new Date().toISOString()
+                                }));
                             }
                         }
                     }
@@ -185,19 +153,15 @@ const UploadItemsModal: React.FC<UploadItemsModalProps> = ({ uploadItemsModal, s
             }
 
             await Promise.all([...updatePromises, ...categoryPromises, ...vendorPromises]);
-
             setError('Items uploaded successfully');
         } catch (error) {
             console.error('Error saving food items:', error);
             setError('Error uploading items');
         } finally {
             setLoading(false);
-            closeModal(3000); // Close the modal after 3 seconds
+            closeModal(3000);
         }
     };
-
-
-
 
     return (
         uploadItemsModal && (
@@ -205,14 +169,11 @@ const UploadItemsModal: React.FC<UploadItemsModalProps> = ({ uploadItemsModal, s
                 <div className="bg-white rounded-lg p-8 w-3/4 max-w-4xl mx-auto relative z-50 text-black">
                     <h2 className="text-black text-2xl font-bold mb-4">Import Items</h2>
 
-                    {/* Container for scrollable content */}
                     <div className="max-h-[70vh] overflow-y-auto">
-                        {/* StockUpdate Component */}
                         <div className="mb-4">
                             <UploadItems onExcelDataChange={handleExcelDataChange} />
                         </div>
 
-                        {/* Tab Navigation */}
                         {allVendorsData && (
                             <div>
                                 <div className="mb-4 flex border-b">
@@ -227,43 +188,39 @@ const UploadItemsModal: React.FC<UploadItemsModalProps> = ({ uploadItemsModal, s
                                     ))}
                                 </div>
 
-                                {/* Tab Content */}
                                 <div className="mb-4 overflow-x-auto">
                                     {activeTab !== null && allVendorsData[activeTab] && (
-                                        <div>
-                                            <table className="min-w-full bg-white border">
-                                                <thead>
-                                                <tr>
-                                                    {allVendorsData[activeTab].header.map((header: string, index: number) => (
-                                                        <th key={index} className="py-2 px-4 border-b text-left bg-gray-100">
-                                                            {header}
-                                                        </th>
+                                        <table className="min-w-full bg-white border">
+                                            <thead>
+                                            <tr>
+                                                {allVendorsData[activeTab].header.map((header: string, index: number) => (
+                                                    <th key={index} className="py-2 px-4 border-b text-left bg-gray-100">
+                                                        {header}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {allVendorsData[activeTab].data.map((row: any, rowIndex: number) => (
+                                                <tr key={rowIndex}>
+                                                    {allVendorsData[activeTab].header.map((header: string, colIndex: number) => (
+                                                        <td key={colIndex} className="py-2 px-4 border-b">
+                                                            {row[header]}
+                                                        </td>
                                                     ))}
                                                 </tr>
-                                                </thead>
-                                                <tbody>
-                                                {allVendorsData[activeTab].data.map((row: any, rowIndex: number) => (
-                                                    <tr key={rowIndex}>
-                                                        {allVendorsData[activeTab].header.map((header: string, colIndex: number) => (
-                                                            <td key={colIndex} className="py-2 px-4 border-b">
-                                                                {row[header]}
-                                                            </td>
-                                                        ))}
-                                                    </tr>
-                                                ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                            ))}
+                                            </tbody>
+                                        </table>
                                     )}
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Buttons */}
                     <div className="flex justify-between mt-4">
                         <button
-                            onClick={closeModal}
+                            onClick={() => setUploadItemsModal(false)}
                             className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
                         >
                             Cancel
@@ -271,27 +228,22 @@ const UploadItemsModal: React.FC<UploadItemsModalProps> = ({ uploadItemsModal, s
 
                         {allVendorsData && Object.keys(allVendorsData).length > 0 && (
                             <button
-                                onClick={() => {
-                                    if (allVendorsData) {
-                                        saveFoodItems(allVendorsData);
-                                    } else {
-                                        setError('No items to upload');
-                                    }
-                                }}
+                                onClick={() => saveFoodItems(allVendorsData)}
                                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                                disabled={loading} // Disable the button while loading
+                                disabled={loading}
                             >
                                 {loading ? 'Uploading...' : 'Upload Items'}
                             </button>
                         )}
                     </div>
                 </div>
+
                 {error && (
                     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-max bg-gray-800 text-white rounded-lg shadow-md flex items-center p-4 z-50">
                         {error.includes('successfully') ? (
-                            <HiCheckCircle className="h-6 w-6 mr-2 text-green-500"/>
+                            <HiCheckCircle className="h-6 w-6 mr-2 text-green-500" />
                         ) : (
-                            <HiXCircle className="h-6 w-6 mr-2 text-red-500"/>
+                            <HiXCircle className="h-6 w-6 mr-2 text-red-500" />
                         )}
                         <span>{error}</span>
                     </div>
